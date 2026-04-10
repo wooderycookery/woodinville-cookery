@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Georgia, serif; background: #faf8f4; color: #2c2c2c; margin: 0; padding: 0; }
+    .wrapper { max-width: 600px; margin: 0 auto; background: white; }
+    .header { background: #3b2f1e; color: #faf8f4; padding: 32px 40px; }
+    .header h1 { font-size: 1.6rem; margin: 0; }
+    .header p  { margin: 4px 0 0; font-size: 0.9rem; opacity: 0.8; }
+    .body { padding: 32px 40px; }
+    .body p { line-height: 1.8; margin-bottom: 16px; }
+    .details { background: #f0e9df; border-radius: 6px; padding: 20px 24px; margin: 24px 0; }
+    .details p { margin: 4px 0; }
+    .btn { display: inline-block; padding: 14px 32px; background: #7a4b1e;
+           color: white; text-decoration: none; border-radius: 4px; font-size: 1rem; }
+    .footer { padding: 24px 40px; font-size: 0.8rem; color: #888; border-top: 1px solid #e5e0d8; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Woodinville Cookery Society</h1>
+    <p>You're invited!</p>
+  </div>
+  <div class="body">
+    <p>Dear {{ guest.name }},</p>
+    <p>We'd love to have you join us for an upcoming gathering.</p>
+
+    <div class="details">
+      <p><strong>{{ event.name }}</strong></p>
+      <p>{{ event.date.strftime("%A, %B %-d, %Y at %-I:%M %p") }}</p>
+      {% if event.location %}<p>{{ event.location }}</p>{% endif %}
+      {% if event.description %}<p style="margin-top:12px">{{ event.description }}</p>{% endif %}
+    </div>
+
+    <p style="text-align:center;margin:32px 0">
+      <a href="{{ rsvp_url }}" class="btn">RSVP Now</a>
+    </p>
+
+    <p>We hope to see you there.</p>
+    <p>Warmly,<br>The Woodinville Cookery Society</p>
+  </div>
+  <div class="footer">
+    <p>This invitation was sent to {{ guest.email }}. To update your RSVP, return to the link above.</p>
+  </div>
+</div>
+</body>
+</html>

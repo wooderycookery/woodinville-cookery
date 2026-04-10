@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}RSVP Confirmed — {{ event.name }}{% endblock %}
+{% block content %}
+<h1>Thank you, {{ guest.name }}!</h1>
+{% if attending %}
+  <p>We can't wait to see you at <strong>{{ event.name }}</strong> on {{ event.date.strftime("%B %-d") }}.</p>
+{% else %}
+  <p>Sorry you can't make it. We'll miss you at <strong>{{ event.name }}</strong>!</p>
+{% endif %}
+<p>You can update your RSVP anytime by returning to this link.</p>
+
+{% if event.photos_album_url %}
+  <p><a href="{{ event.photos_album_url }}" target="_blank">View photos from past events →</a></p>
+{% endif %}
+{% endblock %}

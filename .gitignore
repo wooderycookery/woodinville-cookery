@@ -1,6 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment (never commit real credentials)
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+dist-ssr/
+
+# Editor / OS
+.DS_Store
+.vscode/
+*.suo
+*.sw?
+
+# Logs
+*.log
+npm-debug.log*
+
+# Python (legacy)
 *.pyc
 __pycache__/
-.env
 *.db
-.DS_Store
 venv/

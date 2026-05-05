@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-function renderEmail({ eventName, eventDate, hostNames, teaserLine, heroImageUrl, eventUrl }) {
+function renderHtml({ eventName, eventDate, hostNames, teaserLine, heroImageUrl, eventUrl }) {
   const heroSection = heroImageUrl
     ? `<img src="${heroImageUrl}" alt="" width="600" style="width:100%;max-height:320px;object-fit:cover;display:block;" />`
     : ''
@@ -32,11 +32,32 @@ function renderEmail({ eventName, eventDate, hostNames, teaserLine, heroImageUrl
     </div>
     <div style="background-color:#F9F6F1;padding:24px 48px;text-align:center;border-top:1px solid rgba(27,58,45,0.1);">
       <p style="color:#1B3A2D;font-size:13px;font-family:Georgia,serif;font-style:italic;margin:0 0 8px;opacity:0.8;">Full invitation coming soon — Woodinville Cookery Society</p>
-      <p style="color:#1B3A2D;font-size:11px;font-family:system-ui,sans-serif;margin:0;opacity:0.4;">You received this because you were invited by your host.</p>
+      <p style="color:#1B3A2D;font-size:11px;font-family:system-ui,sans-serif;margin:0;opacity:0.4;">You received this because you were personally invited by your host.</p>
     </div>
   </div>
 </body>
 </html>`
+}
+
+function renderText({ eventName, eventDate, hostNames, teaserLine, eventUrl }) {
+  return [
+    'WOODINVILLE COOKERY SOCIETY',
+    '',
+    'SAVE THE DATE',
+    '',
+    eventName,
+    eventDate,
+    '',
+    `Hosted by ${hostNames}`,
+    '',
+    teaserLine,
+    '',
+    `View the event page: ${eventUrl}`,
+    '',
+    'Full invitation coming soon — Woodinville Cookery Society',
+    '',
+    'You received this because you were personally invited by your host.',
+  ].join('\n')
 }
 
 export default async function handler(req, res) {
@@ -58,24 +79,26 @@ export default async function handler(req, res) {
     timeZone: 'America/Los_Angeles',
   })
 
-  const html = renderEmail({
-    eventName,
-    eventDate: formattedDate,
-    hostNames,
-    teaserLine,
-    heroImageUrl,
-    eventUrl: `${appUrl}/event/${eventId}`,
-  })
+  const eventUrl = `${appUrl}/event/${eventId}`
+  const params = { eventName, eventDate: formattedDate, hostNames, teaserLine, heroImageUrl, eventUrl }
+  const html = renderHtml(params)
+  const text = renderText(params)
 
-  // Send individually (privacy) in batches of 100
   const BATCH_SIZE = 100
   try {
     for (let i = 0; i < emails.length; i += BATCH_SIZE) {
       const batch = emails.slice(i, i + BATCH_SIZE).map(email => ({
         from: 'Woodinville Cookery Society <events@woodinvillecookery.com>',
+        reply_to: 'events@woodinvillecookery.com',
         to: [email],
         subject: `Save the Date — ${eventName}`,
         html,
+        text,
+        headers: {
+          'List-Unsubscribe': `<mailto:events@woodinvillecookery.com?subject=unsubscribe>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          'X-Entity-Ref-ID': `wcs-std-${eventId}`,
+        },
       }))
       await resend.batch.send(batch)
     }

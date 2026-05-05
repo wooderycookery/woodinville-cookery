@@ -4,14 +4,23 @@ import { supabase } from '../lib/supabase'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', {
+  return new Date(dateStr).toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     timeZone: 'America/Los_Angeles',
   })
+}
+
+function parseVibe(vibe) {
+  if (!vibe) return { heroImageUrl: null, hostNames: '' }
+  try {
+    return JSON.parse(vibe)
+  } catch {
+    // Legacy: vibe might be a bare URL string
+    return { heroImageUrl: vibe.startsWith('http') ? vibe : null, hostNames: '' }
+  }
 }
 
 export default function EventLanding() {
@@ -24,7 +33,7 @@ export default function EventLanding() {
     async function fetchEvent() {
       const { data, error } = await supabase
         .from('events')
-        .select('id, name, date, host_id, vibe')
+        .select('id, name, date, description, vibe')
         .eq('id', eventId)
         .single()
 
@@ -57,7 +66,8 @@ export default function EventLanding() {
     )
   }
 
-  const heroUrl = event.vibe?.startsWith('http') ? event.vibe : null
+  const { heroImageUrl, hostNames } = parseVibe(event.vibe)
+  const teaserLine = event.description
 
   return (
     <div className="min-h-screen bg-wcs-cream">
@@ -71,10 +81,10 @@ export default function EventLanding() {
         </div>
 
         {/* Hero image */}
-        {heroUrl && (
+        {heroImageUrl && (
           <div className="mb-8 rounded-lg overflow-hidden">
             <img
-              src={heroUrl}
+              src={heroImageUrl}
               alt={event.name}
               className="w-full object-cover max-h-72"
             />
@@ -91,15 +101,15 @@ export default function EventLanding() {
             {formatDate(event.date)}
           </p>
 
-          {event.hostName && (
+          {hostNames && (
             <p className="text-wcs-green/70 text-sm">
-              Hosted by {event.hostName}
+              Hosted by {hostNames}
             </p>
           )}
 
-          {event.teaserLine && (
+          {teaserLine && (
             <p className="text-wcs-green/80 italic font-serif text-lg">
-              {event.teaserLine}
+              {teaserLine}
             </p>
           )}
         </div>

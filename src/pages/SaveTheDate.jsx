@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+function parseEmails(raw) {
+  return raw
+    .split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(s => s.includes('@'))
+}
+
 export default function SaveTheDate() {
   const [form, setForm] = useState({
     eventName: '',
@@ -29,13 +36,6 @@ export default function SaveTheDate() {
     setHeroImage(file || null)
   }
 
-  function parseEmails(raw) {
-    return raw
-      .split(/[\n,]+/)
-      .map(s => s.trim())
-      .filter(s => s.includes('@'))
-  }
-
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
@@ -55,7 +55,7 @@ export default function SaveTheDate() {
       let heroImageUrl = null
       if (heroImage) {
         const ext = heroImage.name.split('.').pop()
-        const path = `temp/${Date.now()}.${ext}`
+        const path = `${user.id}/${Date.now()}.${ext}`
         const { error: uploadError } = await supabase.storage
           .from('event-images')
           .upload(path, heroImage, { upsert: true })
@@ -67,24 +67,21 @@ export default function SaveTheDate() {
       }
 
       // 2. Create event record
+      // description = teaser line; vibe = JSON with hero URL + host display names
       const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
           name: form.eventName,
           date: new Date(form.eventDate).toISOString(),
           host_id: user.id,
+          description: form.teaserLine,
+          vibe: JSON.stringify({ heroImageUrl, hostNames: form.hostNames }),
         })
         .select()
         .single()
       if (eventError) throw eventError
 
-      // Store hero image url on event via update (future: dedicated column)
-      if (heroImageUrl) {
-        await supabase.from('events').update({ vibe: heroImageUrl }).eq('id', event.id)
-      }
-
       // 3. Upsert contacts and create guest records
-      const guestIds = []
       for (const email of emails) {
         const { data: contact, error: contactError } = await supabase
           .from('contacts')
@@ -93,17 +90,13 @@ export default function SaveTheDate() {
           .single()
         if (contactError) throw contactError
 
-        const { data: guest, error: guestError } = await supabase
+        const { error: guestError } = await supabase
           .from('guests')
           .insert({ contact_id: contact.id, event_id: event.id })
-          .select()
-          .single()
         if (guestError) throw guestError
-
-        guestIds.push(guest.id)
       }
 
-      // 4. Send emails via API route
+      // 4. Send emails via serverless function
       const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
       const res = await fetch('/api/send-save-the-date', {
         method: 'POST',
@@ -156,6 +149,7 @@ export default function SaveTheDate() {
             <Link
               to={`/event/${status.eventId}`}
               target="_blank"
+              rel="noreferrer"
               className="text-sm text-wcs-copper underline"
             >
               Preview event landing page →
@@ -168,6 +162,8 @@ export default function SaveTheDate() {
       </div>
     )
   }
+
+  const emailCount = form.guestEmails ? parseEmails(form.guestEmails).length : 0
 
   return (
     <div className="min-h-screen bg-wcs-cream">
@@ -232,9 +228,7 @@ export default function SaveTheDate() {
           <div>
             <label className="block text-sm text-wcs-green mb-1" htmlFor="teaserLine">
               Teaser Line <span className="text-wcs-copper">*</span>
-              <span className="text-wcs-green/40 ml-2 font-normal">
-                {form.teaserLine.length}/120
-              </span>
+              <span className="text-wcs-green/40 ml-2 font-normal">{form.teaserLine.length}/120</span>
             </label>
             <input
               id="teaserLine"
@@ -255,7 +249,6 @@ export default function SaveTheDate() {
             </label>
             <input
               id="heroImage"
-              name="heroImage"
               type="file"
               accept="image/*"
               onChange={handleImageChange}
@@ -278,16 +271,14 @@ export default function SaveTheDate() {
               placeholder={"alice@example.com\nbob@example.com\ncarol@example.com"}
               className="w-full border border-wcs-green/30 bg-white rounded px-3 py-2 text-wcs-green placeholder-wcs-green/30 focus:outline-none focus:border-wcs-copper font-mono text-sm"
             />
-            {form.guestEmails && (
+            {emailCount > 0 && (
               <p className="text-xs text-wcs-green/50 mt-1">
-                {parseEmails(form.guestEmails).length} valid email{parseEmails(form.guestEmails).length !== 1 ? 's' : ''} detected
+                {emailCount} valid email{emailCount !== 1 ? 's' : ''} detected
               </p>
             )}
           </div>
 
-          {error && (
-            <p className="text-red-600 text-sm">{error}</p>
-          )}
+          {error && <p className="text-red-600 text-sm">{error}</p>}
 
           <button
             type="submit"
@@ -300,11 +291,4 @@ export default function SaveTheDate() {
       </main>
     </div>
   )
-
-  function parseEmails(raw) {
-    return raw
-      .split(/[\n,]+/)
-      .map(s => s.trim())
-      .filter(s => s.includes('@'))
-  }
 }

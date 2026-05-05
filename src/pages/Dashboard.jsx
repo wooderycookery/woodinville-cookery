@@ -1,8 +1,28 @@
+import { useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+
+  // Ensure a profiles row exists for the authenticated host.
+  // The profiles table is required before events can be inserted (FK constraint).
+  useEffect(() => {
+    async function ensureProfile() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      await supabase.from('profiles').upsert(
+        {
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.full_name || user.email.split('@')[0],
+          role: 'host',
+        },
+        { onConflict: 'id' }
+      )
+    }
+    ensureProfile()
+  }, [])
 
   async function handleLogout() {
     await supabase.auth.signOut()

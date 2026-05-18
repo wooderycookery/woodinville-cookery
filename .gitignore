@@ -25,3 +25,7 @@ npm-debug.log*
 __pycache__/
 *.db
 venv/
+.vercel
+
+# Supabase CLI temp state
+supabase/.temp/

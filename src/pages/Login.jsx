@@ -4,37 +4,37 @@ import { supabase } from '../lib/supabase'
 
 export default function Login() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      navigate('/dashboard')
-    }
+    if (error) { setError(error.message); setLoading(false) }
+    else navigate('/dashboard')
   }
 
   return (
-    <div className="min-h-screen bg-wcs-cream flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-10">
-          <p className="text-wcs-copper tracking-widest text-xs uppercase mb-2">Host Access</p>
-          <h1 className="font-serif text-3xl text-wcs-green">Woodinville Cookery Society</h1>
+    <div style={{ minHeight: '100vh', background: 'var(--wcs-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+      <div style={{ width: '100%', maxWidth: 360 }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 240, height: 'auto', display: 'inline-block' }} />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Label */}
+        <p style={{ textAlign: 'center', fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 24 }}>
+          Host Access
+        </p>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label className="block text-sm text-wcs-green mb-1" htmlFor="email">
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--wcs-green-dark)', marginBottom: 6, fontFamily: 'Inter, system-ui' }} htmlFor="email">
               Email
             </label>
             <input
@@ -43,12 +43,23 @@ export default function Login() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full border border-wcs-green/30 bg-white rounded px-3 py-2 text-wcs-green placeholder-wcs-green/40 focus:outline-none focus:border-wcs-copper"
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid var(--wcs-cream-dark)',
+                borderRadius: 6,
+                background: 'var(--wcs-white)',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontSize: 14,
+                color: 'var(--wcs-green-dark)',
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-wcs-green mb-1" htmlFor="password">
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--wcs-green-dark)', marginBottom: 6, fontFamily: 'Inter, system-ui' }} htmlFor="password">
               Password
             </label>
             <input
@@ -57,20 +68,43 @@ export default function Login() {
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full border border-wcs-green/30 bg-white rounded px-3 py-2 text-wcs-green placeholder-wcs-green/40 focus:outline-none focus:border-wcs-copper"
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                border: '1px solid var(--wcs-cream-dark)',
+                borderRadius: 6,
+                background: 'var(--wcs-white)',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontSize: 14,
+                color: 'var(--wcs-green-dark)',
+                boxSizing: 'border-box',
+                outline: 'none',
+              }}
             />
           </div>
 
-          {error && (
-            <p className="text-red-600 text-sm">{error}</p>
-          )}
+          {error && <p style={{ fontSize: 13, color: '#b91c1c', margin: 0 }}>{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-wcs-green text-wcs-cream py-2 rounded font-sans text-sm tracking-wide hover:bg-wcs-green/90 disabled:opacity-50 transition-colors"
+            style={{
+              width: '100%',
+              padding: '14px 40px',
+              background: loading ? 'var(--wcs-cream-dark)' : 'var(--wcs-green-dark)',
+              color: 'var(--wcs-cream)',
+              border: 'none',
+              borderRadius: 6,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: 12,
+              fontWeight: 500,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              marginTop: 8,
+            }}
           >
-            {loading ? 'Signing in…' : 'Sign In'}
+            {loading ? 'Entering…' : 'Enter'}
           </button>
         </form>
       </div>

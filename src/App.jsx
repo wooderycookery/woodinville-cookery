@@ -3,6 +3,8 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import SaveTheDate from './pages/SaveTheDate'
 import EventLanding from './pages/EventLanding'
+import GuestDashboard from './pages/GuestDashboard'
+import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
 export default function App() {
@@ -11,6 +13,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/event/:eventId" element={<EventLanding />} />
+        <Route path="/my-invitations" element={<GuestDashboard />} />
         <Route
           path="/dashboard"
           element={
@@ -28,6 +31,7 @@ export default function App() {
           }
         />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   )

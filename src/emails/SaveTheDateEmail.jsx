@@ -49,7 +49,7 @@ export default function SaveTheDateEmail({
 
           {/* Body */}
           <Section style={bodySection}>
-            <Text style={saveTheDateLabel}>Save the Date</Text>
+            <Text style={saveTheDateLabel}>Mark the date</Text>
 
             <Text style={eventNameStyle}>{eventName}</Text>
 
@@ -64,14 +64,14 @@ export default function SaveTheDateEmail({
             <Hr style={divider} />
 
             <Link href={eventUrl} style={ctaButton}>
-              View Event Page
+              See the details
             </Link>
           </Section>
 
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Full invitation coming soon — Woodinville Cookery Society
+              The full invitation follows — Woodinville Cookery Society
             </Text>
             <Text style={footerMeta}>
               You received this because you were invited by your host.

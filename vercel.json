@@ -8,7 +8,7 @@
   ],
   "crons": [
     {
-      "path": "/api/ping",
+      "path": "/api/get-gallery",
       "schedule": "0 12 */2 * *"
     }
   ]

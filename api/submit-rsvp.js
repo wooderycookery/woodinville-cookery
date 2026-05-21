@@ -13,7 +13,7 @@ const STATUS_LABELS = {
   declined: 'Send my regrets',
 }
 
-function confirmationHtml({ guestName, eventName, eventDate, rsvpStatus, eventUrl, appUrl }) {
+function confirmationHtml({ guestName, eventName, eventDate, rsvpStatus, eventUrl, icsUrl, appUrl }) {
   const logoUrl = `${appUrl}/WCS_logo.png`
   const heading = rsvpStatus === 'attending' ? "We'll set a place for you."
     : rsvpStatus === 'maybe' ? "We hope the evening finds you free."
@@ -45,6 +45,7 @@ function confirmationHtml({ guestName, eventName, eventDate, rsvpStatus, eventUr
       <p style="font-family:Georgia,serif;font-size:16px;color:#2C4A2E;margin:0 0 8px;">${eventName}</p>
       <p style="font-size:10px;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:#B87C5A;margin:0 0 24px;">${eventDate}</p>
       ${rsvpStatus !== 'declined' ? `<a href="${eventUrl}" style="display:inline-block;background:#2C4A2E;color:#F5F0E8;padding:14px 40px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;font-family:'Inter',system-ui,sans-serif;">See the details</a>` : ''}
+      ${icsUrl ? `<p style="margin:20px 0 0;"><a href="${icsUrl}" style="font-size:12px;color:#B87C5A;font-family:'Inter',system-ui,sans-serif;letter-spacing:0.04em;">Add this evening to your calendar</a></p>` : ''}
     </div>
 
     <div style="margin-top:40px;padding:20px 48px;border-top:1px solid #DDD5C8;text-align:center;">
@@ -114,6 +115,9 @@ export default async function handler(req, res) {
   const guestName = guest.contacts?.name
   const event = guest.events
   const eventUrl = `${appUrl}/event/${event.id}?token=${token}`
+  const icsUrl = rsvpStatus !== 'declined'
+    ? `${appUrl}/api/generate-ics?eventId=${event.id}&token=${token}`
+    : null
 
   const formattedDate = new Date(event.date).toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -133,7 +137,7 @@ export default async function handler(req, res) {
           : `Thank you for letting us know — ${event.name}`,
         html: confirmationHtml({
           guestName, eventName: event.name, eventDate: formattedDate,
-          rsvpStatus, eventUrl, appUrl,
+          rsvpStatus, eventUrl, icsUrl, appUrl,
         }),
         text: confirmationText({
           guestName, eventName: event.name, eventDate: formattedDate,

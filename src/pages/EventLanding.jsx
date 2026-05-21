@@ -500,6 +500,7 @@ export default function EventLanding() {
               <ConfirmationBlock
                 rsvpStatus={selectedStatus}
                 onUpdate={() => setSubmitted(false)}
+                icsUrl={selectedStatus !== 'declined' ? `/api/generate-ics?eventId=${eventId}&token=${token}` : null}
               />
             ) : (
               <RsvpForm
@@ -993,7 +994,7 @@ function RsvpForm({ selectedStatus, setSelectedStatus, dietaryNotes, setDietaryN
   )
 }
 
-function ConfirmationBlock({ rsvpStatus, onUpdate }) {
+function ConfirmationBlock({ rsvpStatus, onUpdate, icsUrl }) {
   const copy = CONFIRMATION[rsvpStatus] || CONFIRMATION.attending
   return (
     <div className="text-center">
@@ -1004,9 +1005,17 @@ function ConfirmationBlock({ rsvpStatus, onUpdate }) {
       <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 16 }}>
         {copy.sub}
       </p>
+      {icsUrl && (
+        <a
+          href={icsUrl}
+          style={{ display: 'block', fontSize: 12, color: 'var(--wcs-copper)', marginBottom: 16, letterSpacing: '0.04em', fontFamily: 'Inter, system-ui', textDecoration: 'none' }}
+        >
+          Add this evening to your calendar
+        </a>
+      )}
       <button
         onClick={onUpdate}
-        style={{ fontSize: 11, color: 'var(--wcs-copper)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'underline' }}
+        style={{ fontSize: 11, color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'underline' }}
       >
         Update my RSVP
       </button>

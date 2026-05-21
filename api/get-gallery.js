@@ -6,6 +6,15 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
+  // GET with no body = keep-alive ping (used by Vercel cron)
+  if (req.method === 'GET') {
+    const { count, error } = await supabase
+      .from('events')
+      .select('*', { count: 'exact', head: true })
+    if (error) return res.status(500).json({ ok: false, error: error.message })
+    return res.status(200).json({ ok: true, event_count: count })
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { eventId, phase } = req.body

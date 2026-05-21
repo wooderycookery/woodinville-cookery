@@ -91,10 +91,13 @@ export default function EventLanding() {
   const [addGuestResult, setAddGuestResult] = useState(null)
   const [addGuestError, setAddGuestError]   = useState('')
 
+  const [galleryOpening, setGalleryOpening] = useState(null)
+  const [galleryOpenError, setGalleryOpenError] = useState('')
+
   useEffect(() => {
     supabase
       .from('events')
-      .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id')
+      .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, pre_gallery_open, post_gallery_open')
       .eq('id', eventId)
       .single()
       .then(({ data, error }) => {
@@ -296,6 +299,31 @@ export default function EventLanding() {
       setAddGuestError(err.message)
     } finally {
       setAddGuestSending(false)
+    }
+  }
+
+  async function handleOpenGallery(phase) {
+    if (!hostUserId) return
+    setGalleryOpening(phase)
+    setGalleryOpenError('')
+    try {
+      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
+      const res = await fetch('/api/gallery-open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, phase, authorId: hostUserId, appUrl }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to open gallery')
+      setEvent(prev => ({
+        ...prev,
+        pre_gallery_open: phase === 'pre' ? true : prev.pre_gallery_open,
+        post_gallery_open: phase === 'post' ? true : prev.post_gallery_open,
+      }))
+    } catch (err) {
+      setGalleryOpenError(err.message)
+    } finally {
+      setGalleryOpening(null)
     }
   }
 
@@ -512,6 +540,34 @@ export default function EventLanding() {
           </div>
         )}
 
+        {/* Gallery links — for confirmed guests */}
+        {submitted && (selectedStatus === 'attending' || selectedStatus === 'maybe') && guest && (event.pre_gallery_open || event.post_gallery_open) && (
+          <div style={{ marginTop: 40 }}>
+            <div style={{ width: 40, height: 1, background: 'var(--wcs-copper)', margin: '0 auto 24px' }} />
+            <p style={{ textAlign: 'center', fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 16, fontFamily: 'Inter, system-ui' }}>
+              Photographs
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {event.pre_gallery_open && (
+                <Link
+                  to={`/gallery/${eventId}/pre${token ? `?token=${token}` : ''}`}
+                  style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', textDecoration: 'none', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, padding: '10px 20px' }}
+                >
+                  Pre-event photographs →
+                </Link>
+              )}
+              {event.post_gallery_open && (
+                <Link
+                  to={`/gallery/${eventId}/post${token ? `?token=${token}` : ''}`}
+                  style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', textDecoration: 'none', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, padding: '10px 20px' }}
+                >
+                  What we remember →
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Host: guest roster + bring list */}
         {isHost && (
           <div style={{ marginTop: 48 }}>
@@ -586,6 +642,72 @@ export default function EventLanding() {
                 </div>
               </div>
             )}
+
+            {/* Gallery controls */}
+            <div style={{ marginTop: 28 }}>
+              <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 12 }}>
+                Photo galleries
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Pre-event gallery */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--wcs-white)', border: '1px solid var(--wcs-cream-dark)', borderRadius: 8 }}>
+                  <div>
+                    <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)', fontWeight: 500 }}>Pre-event</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter, system-ui', color: event.pre_gallery_open ? 'var(--wcs-green-dark)' : 'var(--wcs-green-muted)', marginLeft: 10 }}>
+                      {event.pre_gallery_open ? 'Open' : 'Not yet opened'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {event.pre_gallery_open ? (
+                      <Link
+                        to={`/gallery/${eventId}/pre`}
+                        style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'none' }}
+                      >
+                        View →
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenGallery('pre')}
+                        disabled={galleryOpening === 'pre'}
+                        style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--wcs-green-dark)', background: 'none', border: '1px solid var(--wcs-cream-dark)', borderRadius: 4, padding: '6px 12px', cursor: 'pointer', fontFamily: 'Inter, system-ui' }}
+                      >
+                        {galleryOpening === 'pre' ? 'Opening…' : 'Open gallery'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* Post-event gallery */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--wcs-white)', border: '1px solid var(--wcs-cream-dark)', borderRadius: 8 }}>
+                  <div>
+                    <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)', fontWeight: 500 }}>Post-event</span>
+                    <span style={{ fontSize: 11, fontFamily: 'Inter, system-ui', color: event.post_gallery_open ? 'var(--wcs-green-dark)' : 'var(--wcs-green-muted)', marginLeft: 10 }}>
+                      {event.post_gallery_open ? 'Open' : 'Not yet opened'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {event.post_gallery_open ? (
+                      <Link
+                        to={`/gallery/${eventId}/post`}
+                        style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'none' }}
+                      >
+                        View →
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenGallery('post')}
+                        disabled={galleryOpening === 'post'}
+                        style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--wcs-green-dark)', background: 'none', border: '1px solid var(--wcs-cream-dark)', borderRadius: 4, padding: '6px 12px', cursor: 'pointer', fontFamily: 'Inter, system-ui' }}
+                      >
+                        {galleryOpening === 'post' ? 'Opening…' : 'Open gallery'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {galleryOpenError && (
+                <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 8, fontFamily: 'Inter, system-ui' }}>{galleryOpenError}</p>
+              )}
+            </div>
 
             {/* Add guests */}
             <div style={{ marginTop: 28 }}>

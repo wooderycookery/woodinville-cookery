@@ -5,6 +5,7 @@ import SaveTheDate from './pages/SaveTheDate'
 import EventLanding from './pages/EventLanding'
 import GuestDashboard from './pages/GuestDashboard'
 import Gallery from './pages/Gallery'
+import History from './pages/History'
 import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
@@ -16,6 +17,14 @@ export default function App() {
         <Route path="/event/:eventId" element={<EventLanding />} />
         <Route path="/my-invitations" element={<GuestDashboard />} />
         <Route path="/gallery/:eventId/:type" element={<Gallery />} />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <History />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/dashboard"
           element={

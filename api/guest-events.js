@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   // Fetch all invitations for this contact
   const { data: invitations, error: invErr } = await supabase
     .from('guests')
-    .select('id, rsvp_status, invite_token, events(id, name, date, vibe, description, location)')
+    .select('id, rsvp_status, invite_token, events(id, name, date, vibe, description, location, pre_gallery_open, post_gallery_open)')
     .eq('contact_id', guest.contact_id)
 
   if (invErr) return res.status(500).json({ error: invErr.message })
@@ -44,6 +44,8 @@ export default async function handler(req, res) {
         description: i.events?.description,
         location: i.events?.location,
         vibe: i.events?.vibe,
+        preGalleryOpen: i.events?.pre_gallery_open || false,
+        postGalleryOpen: i.events?.post_gallery_open || false,
       },
     })),
   })

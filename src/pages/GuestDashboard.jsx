@@ -115,7 +115,7 @@ export default function GuestDashboard() {
         {upcoming.length > 0 && (
           <section style={{ marginBottom: 40 }}>
             <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 14 }}>
-              Upcoming
+              What's ahead
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {upcoming.map(inv => <InvitationCard key={inv.guestId} inv={inv} />)}
@@ -126,7 +126,7 @@ export default function GuestDashboard() {
         {past.length > 0 && (
           <section>
             <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginBottom: 14 }}>
-              Past
+              What we've shared
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {past.map(inv => <InvitationCard key={inv.guestId} inv={inv} dimmed />)}
@@ -145,20 +145,12 @@ function InvitationCard({ inv, dimmed }) {
   const status = rsvpStatus || 'no_response'
   const { color, bg } = STATUS_COLOR[status] || STATUS_COLOR.no_response
   const eventUrl = `/event/${event.id}?token=${token}`
+  const hasGallery = event.preGalleryOpen || event.postGalleryOpen
+  const isAttending = status === 'attending' || status === 'maybe'
 
   return (
-    <Link
-      to={eventUrl}
-      style={{ textDecoration: 'none', display: 'block' }}
-    >
-      <div style={{
-        background: 'var(--wcs-white)',
-        border: '1px solid var(--wcs-cream-dark)',
-        borderRadius: 10,
-        overflow: 'hidden',
-        opacity: dimmed ? 0.6 : 1,
-        transition: 'box-shadow 0.15s',
-      }}>
+    <div style={{ background: 'var(--wcs-white)', border: '1px solid var(--wcs-cream-dark)', borderRadius: 10, overflow: 'hidden', opacity: dimmed ? 0.7 : 1 }}>
+      <Link to={eventUrl} style={{ textDecoration: 'none', display: 'block' }}>
         {heroImageUrl && (
           <img
             src={heroImageUrl}
@@ -180,23 +172,25 @@ function InvitationCard({ inv, dimmed }) {
               </p>
             )}
           </div>
-          <span style={{
-            flexShrink: 0,
-            fontSize: 9,
-            fontWeight: 500,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            fontFamily: 'Inter, system-ui',
-            color,
-            background: bg,
-            padding: '4px 10px',
-            borderRadius: 4,
-            marginTop: 2,
-          }}>
+          <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'Inter, system-ui', color, background: bg, padding: '4px 10px', borderRadius: 4, marginTop: 2 }}>
             {STATUS_LABEL[status]}
           </span>
         </div>
-      </div>
-    </Link>
+      </Link>
+      {hasGallery && isAttending && (
+        <div style={{ padding: '0 20px 14px', display: 'flex', gap: 14 }}>
+          {event.preGalleryOpen && (
+            <Link to={`/gallery/${event.id}/pre?token=${token}`} style={{ fontSize: 11, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', letterSpacing: '0.06em', textDecoration: 'none' }}>
+              View photographs →
+            </Link>
+          )}
+          {event.postGalleryOpen && (
+            <Link to={`/gallery/${event.id}/post?token=${token}`} style={{ fontSize: 11, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', letterSpacing: '0.06em', textDecoration: 'none' }}>
+              What we remember →
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

@@ -204,8 +204,9 @@ export default function Dashboard() {
           <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto' }} />
         </Link>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-          {['Events', 'Contacts', 'Preferences'].map((label, i) => (
-            <span key={label} style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: i === 0 ? 'var(--wcs-copper)' : 'var(--wcs-green-muted)', cursor: 'default' }}>{label}</span>
+          <Link to="/history" style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', textDecoration: 'none' }}>History</Link>
+          {['Contacts', 'Preferences'].map((label) => (
+            <span key={label} style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', cursor: 'default' }}>{label}</span>
           ))}
           <button onClick={handleLogout} style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
             Leave

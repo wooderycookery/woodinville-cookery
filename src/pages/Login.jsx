@@ -24,7 +24,7 @@ export default function Login() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 240, height: 'auto', display: 'inline-block' }} />
+          <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 240, height: 'auto', display: 'inline-block' }} />
         </div>
 
         {/* Label */}

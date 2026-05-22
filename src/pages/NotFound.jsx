@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wcs-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
       <div style={{ textAlign: 'center', maxWidth: 400 }}>
-        <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto', display: 'inline-block', marginBottom: 32 }} />
+        <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto', display: 'inline-block', marginBottom: 32 }} />
         <div style={{ width: 40, height: 1, background: 'var(--wcs-copper)', margin: '0 auto 28px' }} />
         <p className="font-serif" style={{ fontSize: 22, color: 'var(--wcs-green-dark)', marginBottom: 10, lineHeight: 1.4 }}>
           We can't seem to find that page.

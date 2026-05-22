@@ -258,7 +258,7 @@ export default function SaveTheDate() {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--wcs-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', maxWidth: 360 }}>
-          <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto', display: 'inline-block', marginBottom: 28 }} />
+          <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto', display: 'inline-block', marginBottom: 28 }} />
           <div style={{ width: 40, height: 1, background: 'var(--wcs-copper)', margin: '0 auto 28px' }} />
           <h2 className="font-serif" style={{ fontSize: 24, color: 'var(--wcs-green-dark)', marginBottom: 10 }}>
             The notice has been sent.
@@ -293,7 +293,7 @@ export default function SaveTheDate() {
         <Link to="/dashboard" style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', textDecoration: 'none', fontFamily: 'Inter, system-ui' }}>
           ← Your events
         </Link>
-        <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto' }} />
+        <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto' }} />
         <div style={{ width: 80 }} />
       </header>
 

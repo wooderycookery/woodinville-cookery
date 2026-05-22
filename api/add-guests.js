@@ -8,7 +8,7 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 function renderHtml({ eventName, eventDate, hostNames, teaserLine, heroImageUrl, eventUrl, appUrl }) {
-  const logoUrl     = `${appUrl}/WCS_logo.png`
+  const logoUrl     = `${appUrl}/wcs_logo.png`
   const heroSection = heroImageUrl
     ? `<img src="${heroImageUrl}" alt="" style="width:100%;max-height:280px;object-fit:cover;display:block;" />`
     : ''

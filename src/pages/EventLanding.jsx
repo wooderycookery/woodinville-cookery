@@ -355,14 +355,14 @@ export default function EventLanding() {
         <div style={{ position: 'relative', textAlign: 'center' }}>
           {isHost ? (
             <Link to="/dashboard" style={{ display: 'inline-block', lineHeight: 0 }}>
-              <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 140, height: 'auto', display: 'inline-block' }} />
+              <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 140, height: 'auto', display: 'inline-block' }} />
             </Link>
           ) : guest ? (
             <Link to="/my-invitations" style={{ display: 'inline-block', lineHeight: 0 }}>
-              <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 140, height: 'auto', display: 'inline-block' }} />
+              <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 140, height: 'auto', display: 'inline-block' }} />
             </Link>
           ) : (
-            <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 140, height: 'auto', display: 'inline-block' }} />
+            <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 140, height: 'auto', display: 'inline-block' }} />
           )}
           {isHost && (
             <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>

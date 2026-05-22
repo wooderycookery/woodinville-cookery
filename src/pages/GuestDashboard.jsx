@@ -75,7 +75,7 @@ export default function GuestDashboard() {
   if (error) return (
     <div style={{ minHeight: '100vh', background: 'var(--wcs-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
       <div style={{ textAlign: 'center', maxWidth: 360 }}>
-        <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto', display: 'inline-block', marginBottom: 28 }} />
+        <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto', display: 'inline-block', marginBottom: 28 }} />
         <div style={{ width: 40, height: 1, background: 'var(--wcs-copper)', margin: '0 auto 28px' }} />
         <p className="font-serif" style={{ fontSize: 20, color: 'var(--wcs-green-dark)', marginBottom: 10 }}>
           We can't locate your invitations.
@@ -90,7 +90,7 @@ export default function GuestDashboard() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--wcs-cream)' }}>
       <header style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--wcs-cream-dark)' }}>
-        <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto' }} />
+        <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto' }} />
       </header>
 
       <main style={{ maxWidth: 560, margin: '0 auto', padding: '40px 24px 60px' }}>

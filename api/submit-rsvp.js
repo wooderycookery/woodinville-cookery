@@ -14,7 +14,7 @@ const STATUS_LABELS = {
 }
 
 function confirmationHtml({ guestName, eventName, eventDate, rsvpStatus, eventUrl, icsUrl, appUrl }) {
-  const logoUrl = `${appUrl}/WCS_logo.png`
+  const logoUrl = `${appUrl}/wcs_logo.png`
   const heading = rsvpStatus === 'attending' ? "We'll set a place for you."
     : rsvpStatus === 'maybe' ? "We hope the evening finds you free."
     : "We're sorry to miss you this time."

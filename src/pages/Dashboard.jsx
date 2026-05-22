@@ -7,7 +7,7 @@ const CATEGORIES = ['Wines', 'Dishes', 'Desserts', 'Non-alcoholic', 'Other']
 function daysUntil(dateStr) {
   if (!dateStr) return null
   const diff = Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24))
-  return diff > 0 ? diff : 0
+  return diff > 0 ? diff : null
 }
 
 function formatEventDateLabel(dateStr) {
@@ -201,7 +201,7 @@ export default function Dashboard() {
       {/* Header */}
       <header style={{ padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link to="/dashboard" style={{ display: 'inline-block', lineHeight: 0 }}>
-          <img src="/WCS_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto' }} />
+          <img src="/wcs_logo.png" alt="Woodinville Cookery Society" style={{ width: 120, height: 'auto' }} />
         </Link>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
           <Link to="/history" style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', textDecoration: 'none' }}>History</Link>

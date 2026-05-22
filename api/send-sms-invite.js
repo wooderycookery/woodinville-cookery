@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
   const from   = process.env.TWILIO_PHONE_NUMBER
 
-  const shortDate = new Date(eventDate).toLocaleDateString('en-US', {
+  const shortDate = new Date(eventDate + 'T12:00:00Z').toLocaleDateString('en-US', {
     month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
   })
 

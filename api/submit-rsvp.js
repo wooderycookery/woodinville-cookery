@@ -119,7 +119,7 @@ export default async function handler(req, res) {
     ? `${appUrl}/api/generate-ics?eventId=${event.id}&token=${token}`
     : null
 
-  const formattedDate = new Date(event.date).toLocaleDateString('en-US', {
+  const formattedDate = new Date(event.date + 'T12:00:00Z').toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     timeZone: 'America/Los_Angeles',
   })

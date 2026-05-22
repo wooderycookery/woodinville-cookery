@@ -22,7 +22,7 @@ function parseVibe(vibe) {
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     timeZone: 'America/Los_Angeles',
   })
@@ -30,7 +30,7 @@ function formatDate(dateStr) {
 
 function isPast(dateStr) {
   if (!dateStr) return false
-  return new Date(dateStr) < new Date()
+  return new Date(dateStr + 'T12:00:00') < new Date()
 }
 
 export default function GuestDashboard() {
@@ -57,7 +57,7 @@ export default function GuestDashboard() {
         if (data.error) { setError('invalid'); return }
         setGuest(data.guest)
         const sorted = (data.invitations || []).sort(
-          (a, b) => new Date(a.event.date) - new Date(b.event.date)
+          (a, b) => new Date(a.event.date + 'T12:00:00') - new Date(b.event.date + 'T12:00:00')
         )
         setUpcoming(sorted.filter(i => !isPast(i.event.date)))
         setPast(sorted.filter(i => isPast(i.event.date)).reverse())

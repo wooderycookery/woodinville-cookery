@@ -106,7 +106,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No recipient emails provided' })
   }
 
-  const formattedDate = new Date(eventDate).toLocaleDateString('en-US', {
+  const formattedDate = new Date(eventDate + 'T12:00:00Z').toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

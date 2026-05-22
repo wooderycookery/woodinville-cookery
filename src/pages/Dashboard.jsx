@@ -6,13 +6,13 @@ const CATEGORIES = ['Wines', 'Dishes', 'Desserts', 'Non-alcoholic', 'Other']
 
 function daysUntil(dateStr) {
   if (!dateStr) return null
-  const diff = Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24))
+  const diff = Math.ceil((new Date(dateStr + 'T12:00:00') - new Date()) / (1000 * 60 * 60 * 24))
   return diff > 0 ? diff : null
 }
 
 function formatEventDateLabel(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     timeZone: 'America/Los_Angeles',
   }).toUpperCase()
@@ -305,7 +305,7 @@ export default function Dashboard() {
                     ['Theme', activeEvent.theme],
                     ['Dress Code', activeEvent.dress_code],
                     ['Location', activeEvent.location],
-                    ['RSVP Deadline', activeEvent.rsvp_deadline ? new Date(activeEvent.rsvp_deadline + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null],
+                    ['RSVP Deadline', activeEvent.rsvp_deadline ? new Date(activeEvent.rsvp_deadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : null],
                   ].map(([label, value]) => (
                     <div key={label}>
                       <p style={{ ...labelStyle, marginBottom: 2 }}>{label}</p>

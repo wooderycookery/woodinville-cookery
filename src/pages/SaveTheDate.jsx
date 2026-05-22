@@ -200,7 +200,7 @@ export default function SaveTheDate() {
         .from('events')
         .insert({
           name: form.eventName,
-          date: new Date(form.eventDate).toISOString(),
+          date: form.eventDate,
           host_id: user.id,
           description: form.teaserLine,
           vibe: JSON.stringify({ heroImageUrl, hostNames: form.hostNames }),

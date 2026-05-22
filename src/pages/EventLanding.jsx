@@ -5,7 +5,7 @@ import MessageBoard from '../components/MessageBoard'
 
 function formatDateLabel(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -16,7 +16,7 @@ function formatDateLabel(dateStr) {
 
 function formatDateShort(dateStr) {
   if (!dateStr) return 'that day'
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     timeZone: 'America/Los_Angeles',
@@ -194,7 +194,7 @@ export default function EventLanding() {
         .from('events')
         .update({
           name:           editForm.name,
-          date:           editForm.date ? new Date(editForm.date + 'T12:00:00').toISOString() : event.date,
+          date:           editForm.date || event.date,
           description:    editForm.description || null,
           vibe:           newVibe,
           theme:          editForm.theme || null,

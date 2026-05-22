@@ -9,7 +9,7 @@ function parseVibe(vibe) {
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     timeZone: 'America/Los_Angeles',
   })
@@ -17,7 +17,7 @@ function formatDate(dateStr) {
 
 function isPast(dateStr) {
   if (!dateStr) return false
-  return new Date(dateStr) < new Date()
+  return new Date(dateStr + 'T12:00:00') < new Date()
 }
 
 const CopperRule = () => (

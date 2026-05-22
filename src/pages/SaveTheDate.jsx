@@ -3,18 +3,34 @@ import { Link } from 'react-router-dom'
 import Papa from 'papaparse'
 import { supabase } from '../lib/supabase'
 
+function guestKey(g) {
+  return g.email || g.phone || ''
+}
+
 function parseGuests(results) {
-  return results.data
-    .map(row => {
-      const norm = Object.keys(row).reduce((acc, k) => {
-        acc[k.toLowerCase().trim()] = String(row[k] || '').trim()
-        return acc
-      }, {})
-      const email = (norm.email || norm['e-mail'] || '').toLowerCase()
-      const name = norm.name || norm['full name'] || norm.fullname || norm.full_name || ''
-      return { name: name || email.split('@')[0], email }
-    })
-    .filter(r => r.email.includes('@') && r.email.includes('.'))
+  const skipped = []
+  const guests = results.data.map(row => {
+    const norm = Object.keys(row).reduce((acc, k) => {
+      acc[k.toLowerCase().trim()] = String(row[k] || '').trim()
+      return acc
+    }, {})
+    // Email: handle "email address", "email 1", "email", "e-mail" etc.
+    const emailKey = Object.keys(norm).find(k => k.includes('email') || k === 'e-mail')
+    const email = emailKey ? norm[emailKey].toLowerCase() : ''
+    // Phone: handle "phone number", "phone", "mobile", "cell"
+    const phoneKey = Object.keys(norm).find(k => k.includes('phone') || k.includes('mobile') || k.includes('cell'))
+    const phone = phoneKey ? norm[phoneKey].replace(/[^\d+]/g, '') : ''
+    const validPhone = phone.startsWith('+') ? phone : (phone.length === 10 ? `+1${phone}` : (phone.length === 11 && phone.startsWith('1') ? `+${phone}` : ''))
+    const name = norm.name || norm['full name'] || norm.fullname || norm.full_name || ''
+    const validEmail = email.includes('@') && email.includes('.') ? email : ''
+    if (!validEmail && !validPhone) { skipped.push(row); return null }
+    return {
+      name: name || (validEmail ? validEmail.split('@')[0] : validPhone),
+      email: validEmail || null,
+      phone: validPhone || null,
+    }
+  }).filter(Boolean)
+  return { guests, skipped }
 }
 
 function parseEmailText(text) {
@@ -22,12 +38,17 @@ function parseEmailText(text) {
     .split(/[\n,;]+/)
     .map(s => s.trim().toLowerCase())
     .filter(s => s.includes('@') && s.includes('.'))
-    .map(email => ({ email, name: email.split('@')[0] }))
+    .map(email => ({ email, name: email.split('@')[0], phone: null }))
 }
 
 function mergeGuests(existing, incoming) {
-  const seen = new Set(existing.map(g => g.email))
-  const added = incoming.filter(g => !seen.has(g.email))
+  const seenEmails = new Set(existing.filter(g => g.email).map(g => g.email))
+  const seenPhones = new Set(existing.filter(g => g.phone).map(g => g.phone))
+  const added = incoming.filter(g => {
+    if (g.email && seenEmails.has(g.email)) return false
+    if (g.phone && !g.email && seenPhones.has(g.phone)) return false
+    return true
+  })
   return [...existing, ...added]
 }
 
@@ -87,12 +108,13 @@ export default function SaveTheDate() {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const guests = parseGuests(results)
+        const { guests, skipped } = parseGuests(results)
         if (guests.length === 0) {
-          setCsvError('No valid guests found. Ensure the file has an "email" column.')
+          setCsvError('No valid guests found. Each row needs at least an email or phone number.')
           return
         }
         setParsedGuests(prev => mergeGuests(prev, guests))
+        if (skipped.length > 0) setCsvError(`${skipped.length} row${skipped.length > 1 ? 's' : ''} skipped — no email or phone found.`)
         if (csvInputRef.current) csvInputRef.current.value = ''
       },
       error: () => {
@@ -102,8 +124,8 @@ export default function SaveTheDate() {
     })
   }
 
-  function removeGuest(email) {
-    setParsedGuests(prev => prev.filter(g => g.email !== email))
+  function removeGuest(key) {
+    setParsedGuests(prev => prev.filter(g => guestKey(g) !== key))
   }
 
   async function openContactsPicker() {
@@ -111,7 +133,7 @@ export default function SaveTheDate() {
     setShowContacts(true)
     if (contacts.length > 0) return
     setContactsLoading(true)
-    const { data } = await supabase.from('contacts').select('id, name, email').order('name')
+    const { data } = await supabase.from('contacts').select('id, name, email, phone').order('name')
     setContacts(data || [])
     setContactsLoading(false)
   }
@@ -127,7 +149,7 @@ export default function SaveTheDate() {
   function addSelectedContacts() {
     const incoming = contacts
       .filter(c => selectedContacts.has(c.id))
-      .map(c => ({ email: c.email, name: c.name || c.email.split('@')[0] }))
+      .map(c => ({ email: c.email || null, phone: c.phone || null, name: c.name || (c.email ? c.email.split('@')[0] : c.phone) }))
     setParsedGuests(prev => mergeGuests(prev, incoming))
     setSelectedContacts(new Set())
     setShowContacts(false)
@@ -136,7 +158,7 @@ export default function SaveTheDate() {
 
   const filteredContacts = contacts.filter(c => {
     const q = contactsSearch.toLowerCase()
-    return !q || c.name?.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
+    return !q || c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q) || c.phone?.includes(q)
   })
 
   async function handleSubmit(e) {
@@ -189,12 +211,25 @@ export default function SaveTheDate() {
 
       // 3. Upsert contacts and create guest records with tokens
       const guestList = []
-      for (const { name, email } of allGuests) {
-        const { data: contact, error: contactError } = await supabase
-          .from('contacts')
-          .upsert({ email, name }, { onConflict: 'email' })
-          .select()
-          .single()
+      for (const { name, email, phone } of allGuests) {
+        let contact, contactError
+        if (email) {
+          const res = await supabase
+            .from('contacts')
+            .upsert({ email, name, phone: phone || null }, { onConflict: 'email' })
+            .select().single()
+          contact = res.data; contactError = res.error
+        } else {
+          // Phone-only: find existing or insert
+          const { data: existing } = await supabase
+            .from('contacts').select('id, name, email, phone').eq('phone', phone).maybeSingle()
+          if (existing) {
+            contact = existing
+          } else {
+            const res = await supabase.from('contacts').insert({ name, phone }).select().single()
+            contact = res.data; contactError = res.error
+          }
+        }
         if (contactError) throw contactError
 
         const { data: existing } = await supabase
@@ -215,29 +250,39 @@ export default function SaveTheDate() {
           .insert({ contact_id: contact.id, event_id: event.id, invite_token: token })
         if (guestError) throw guestError
 
-        guestList.push({ email, token })
+        guestList.push({ name: contact.name || name, email: contact.email || null, phone: contact.phone || null, token })
       }
 
-      // 4. Send personalized emails
+      // 4. Send invitations — email via Resend, SMS via Twilio (both if contact has both)
       const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
-      const res = await fetch('/api/send-save-the-date', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: event.id,
-          eventName: form.eventName,
-          eventDate: form.eventDate,
-          hostNames: form.hostNames,
-          teaserLine: form.teaserLine,
-          heroImageUrl,
-          guests: guestList,
-          appUrl,
-        }),
-      })
+      const emailGuests = guestList.filter(g => g.email)
+      const smsGuests   = guestList.filter(g => g.phone)
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || 'Email send failed')
+      if (emailGuests.length > 0) {
+        const emailRes = await fetch('/api/send-save-the-date', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: event.id, eventName: form.eventName, eventDate: form.eventDate,
+            hostNames: form.hostNames, teaserLine: form.teaserLine, heroImageUrl,
+            guests: emailGuests, appUrl,
+          }),
+        })
+        if (!emailRes.ok) {
+          const body = await emailRes.json().catch(() => ({}))
+          throw new Error(body.error || 'Email send failed')
+        }
+      }
+
+      if (smsGuests.length > 0) {
+        await fetch('/api/send-sms-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            eventId: event.id, eventName: form.eventName, eventDate: form.eventDate,
+            guests: smsGuests, appUrl,
+          }),
+        })
       }
 
       // 5. Mark save_the_date_sent_at
@@ -461,7 +506,7 @@ export default function SaveTheDate() {
                 ) : (
                   <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                     {filteredContacts.map(c => {
-                      const alreadyAdded = parsedGuests.some(g => g.email === c.email)
+                      const alreadyAdded = parsedGuests.some(g => (c.email && g.email === c.email) || (c.phone && g.phone === c.phone))
                       return (
                         <label
                           key={c.id}
@@ -483,7 +528,8 @@ export default function SaveTheDate() {
                           <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)', flex: 1, minWidth: 0 }}>
                             {c.name && <strong style={{ fontWeight: 500 }}>{c.name}</strong>}
                             {c.name && ' '}
-                            <span style={{ color: 'var(--wcs-green-muted)' }}>{c.email}</span>
+                            <span style={{ color: 'var(--wcs-green-muted)' }}>{c.email || ''}</span>
+                            {c.phone && !c.email && <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-copper)', background: '#f5ede5', padding: '2px 6px', borderRadius: 3, marginLeft: 4 }}>SMS</span>}
                           </span>
                           {alreadyAdded && <span style={{ fontSize: 10, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', letterSpacing: '0.08em' }}>Added</span>}
                         </label>
@@ -527,21 +573,29 @@ export default function SaveTheDate() {
                     <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                       <tr style={{ borderBottom: '1px solid var(--wcs-cream-dark)', background: 'var(--wcs-cream-mid)' }}>
                         <th style={{ padding: '8px 14px', textAlign: 'left', ...labelStyle, fontWeight: 500 }}>Name</th>
-                        <th style={{ padding: '8px 14px', textAlign: 'left', ...labelStyle, fontWeight: 500 }}>Email</th>
+                        <th style={{ padding: '8px 14px', textAlign: 'left', ...labelStyle, fontWeight: 500 }}>Contact</th>
                         <th style={{ padding: '8px 10px', width: 32 }} />
                       </tr>
                     </thead>
                     <tbody>
                       {parsedGuests.map((g, i) => (
-                        <tr key={g.email} style={{ borderTop: '0.5px solid var(--wcs-cream-dark)', background: i % 2 === 0 ? 'var(--wcs-white)' : 'var(--wcs-cream-mid)' }}>
+                        <tr key={guestKey(g)} style={{ borderTop: '0.5px solid var(--wcs-cream-dark)', background: i % 2 === 0 ? 'var(--wcs-white)' : 'var(--wcs-cream-mid)' }}>
                           <td style={{ padding: '9px 14px', fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)' }}>{g.name}</td>
-                          <td style={{ padding: '9px 14px', fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-light)' }}>{g.email}</td>
+                          <td style={{ padding: '9px 14px', fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-light)' }}>
+                            {g.email && <span>{g.email}</span>}
+                            {g.phone && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: g.email ? 8 : 0 }}>
+                                <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-copper)', background: '#f5ede5', padding: '2px 6px', borderRadius: 3 }}>SMS</span>
+                                {g.phone}
+                              </span>
+                            )}
+                          </td>
                           <td style={{ padding: '9px 10px', textAlign: 'center' }}>
                             <button
                               type="button"
-                              onClick={() => removeGuest(g.email)}
+                              onClick={() => removeGuest(guestKey(g))}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wcs-green-muted)', fontSize: 14, lineHeight: 1, padding: 0 }}
-                              aria-label={`Remove ${g.email}`}
+                              aria-label={`Remove ${g.name}`}
                             >
                               ×
                             </button>

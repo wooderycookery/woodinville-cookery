@@ -112,7 +112,7 @@ export default function EventLanding() {
 
             const { data: guestsData } = await supabase
               .from('guests')
-              .select('id, rsvp_status, dietary_notes, contacts(name, email)')
+              .select('id, rsvp_status, dietary_notes, contacts(name, email, phone)')
               .eq('event_id', eventData.id)
             setHostGuests(guestsData || [])
 
@@ -591,12 +591,15 @@ export default function EventLanding() {
                       <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderTop: i > 0 ? '0.5px solid var(--wcs-cream-dark)' : 'none', background: i % 2 === 0 ? 'var(--wcs-white)' : 'var(--wcs-cream-mid)' }}>
                         <div>
                           <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)', fontWeight: 500 }}>
-                            {g.contacts?.name || g.contacts?.email}
+                            {g.contacts?.name || g.contacts?.email || g.contacts?.phone}
                           </span>
                           {g.contacts?.name && g.contacts?.email && (
                             <span style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginLeft: 8 }}>
                               {g.contacts.email}
                             </span>
+                          )}
+                          {g.contacts?.phone && !g.contacts?.email && (
+                            <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-copper)', background: '#f5ede5', padding: '2px 6px', borderRadius: 3, marginLeft: 8, fontFamily: 'Inter, system-ui' }}>SMS</span>
                           )}
                           {g.dietary_notes && (
                             <p style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>

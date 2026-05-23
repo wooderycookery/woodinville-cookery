@@ -82,7 +82,7 @@ function confirmationText({ guestName, eventName, eventDate, rsvpStatus, eventUr
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { token, rsvpStatus, dietaryNotes, appUrl } = req.body
+  const { token, rsvpStatus, dietaryNotes, guestCount, appUrl } = req.body
 
   if (!token || !rsvpStatus) return res.status(400).json({ error: 'Missing required fields' })
   if (!['attending', 'maybe', 'declined'].includes(rsvpStatus)) {
@@ -99,13 +99,17 @@ export default async function handler(req, res) {
   if (guestError || !guest) return res.status(404).json({ error: 'Invalid token' })
 
   // Update RSVP
+  const updateData = {
+    rsvp_status: rsvpStatus,
+    rsvp_at: new Date().toISOString(),
+    dietary_notes: dietaryNotes || null,
+  }
+  if (rsvpStatus === 'attending' || rsvpStatus === 'maybe') {
+    updateData.guest_count = Math.max(1, parseInt(guestCount, 10) || 1)
+  }
   const { error: updateError } = await supabase
     .from('guests')
-    .update({
-      rsvp_status: rsvpStatus,
-      rsvp_at: new Date().toISOString(),
-      dietary_notes: dietaryNotes || null,
-    })
+    .update(updateData)
     .eq('id', guest.id)
 
   if (updateError) return res.status(500).json({ error: 'Failed to save RSVP' })

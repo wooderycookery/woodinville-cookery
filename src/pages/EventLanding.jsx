@@ -49,6 +49,20 @@ const RSVP_OPTIONS = [
   { value: 'declined',   label: 'Send my regrets' },
 ]
 
+const STATUS_LABEL = {
+  attending:   'Attending',
+  maybe:       'I Hope to Make It',
+  declined:    'Send My Regrets',
+  no_response: 'Awaiting Word',
+}
+const STATUS_COLOR = {
+  attending:   '#2c4a2e',
+  maybe:       'var(--wcs-copper)',
+  declined:    '#999',
+  no_response: '#bbb',
+}
+const STATUS_ORDER = { attending: 0, maybe: 1, declined: 2, no_response: 3 }
+
 const CONFIRMATION = {
   attending: { heading: () => "We'll set a place for you.",             sub: 'A note has been sent to your inbox.' },
   maybe:     { heading: () => 'We hope the evening finds you free.',    sub: 'A note has been sent to your inbox.' },
@@ -69,6 +83,7 @@ export default function EventLanding() {
 
   const [selectedStatus, setSelectedStatus] = useState(null)
   const [dietaryNotes, setDietaryNotes]     = useState('')
+  const [guestCount, setGuestCount]         = useState(1)
   const [submitting, setSubmitting]         = useState(false)
   const [rsvpError, setRsvpError]           = useState('')
   const [submitted, setSubmitted]           = useState(false)
@@ -84,6 +99,8 @@ export default function EventLanding() {
   const [saveError, setSaveError] = useState('')
 
   const [hostGuests, setHostGuests]         = useState([])
+  const [guestFilter, setGuestFilter]       = useState('all')
+  const [guestSort, setGuestSort]           = useState({ col: 'status', dir: 'asc' })
   const [hostBringList, setHostBringList]   = useState([])
   const [hostBringClaims, setHostBringClaims] = useState([])
   const [addGuestText, setAddGuestText]     = useState('')
@@ -112,7 +129,7 @@ export default function EventLanding() {
 
             const { data: guestsData } = await supabase
               .from('guests')
-              .select('id, rsvp_status, dietary_notes, contacts(name, email, phone)')
+              .select('id, rsvp_status, dietary_notes, guest_count, contacts(name, email, phone)')
               .eq('event_id', eventData.id)
             setHostGuests(guestsData || [])
 
@@ -236,6 +253,7 @@ export default function EventLanding() {
           if (data.rsvpStatus && data.rsvpStatus !== 'no_response') {
             setSelectedStatus(data.rsvpStatus)
             setDietaryNotes(data.dietaryNotes || '')
+            setGuestCount(data.guestCount || 1)
             setSubmitted(true)
           }
         }
@@ -254,7 +272,7 @@ export default function EventLanding() {
       const res = await fetch('/api/submit-rsvp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, rsvpStatus: selectedStatus, dietaryNotes, appUrl }),
+        body: JSON.stringify({ token, rsvpStatus: selectedStatus, dietaryNotes, guestCount, appUrl }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to submit RSVP')
@@ -273,7 +291,7 @@ export default function EventLanding() {
       .split(/[\n,;]+/)
       .map(s => s.trim().toLowerCase())
       .filter(s => s.includes('@') && s.includes('.'))
-      .map(email => ({ email, name: email.split('@')[0] }))
+      .map(email => ({ email }))
     if (guests.length === 0) return
     setAddGuestSending(true)
     setAddGuestError('')
@@ -292,7 +310,7 @@ export default function EventLanding() {
       // Refresh guest list
       const { data: guestsData } = await supabase
         .from('guests')
-        .select('id, rsvp_status, dietary_notes, contacts(name, email)')
+        .select('id, rsvp_status, dietary_notes, guest_count, contacts(name, email)')
         .eq('event_id', eventId)
       setHostGuests(guestsData || [])
     } catch (err) {
@@ -510,6 +528,8 @@ export default function EventLanding() {
                 setSelectedStatus={setSelectedStatus}
                 dietaryNotes={dietaryNotes}
                 setDietaryNotes={setDietaryNotes}
+                guestCount={guestCount}
+                setGuestCount={setGuestCount}
                 onSubmit={handleRsvpSubmit}
                 submitting={submitting}
                 error={rsvpError}
@@ -580,44 +600,85 @@ export default function EventLanding() {
             <HostRsvpSummary guests={hostGuests} />
 
             {/* Guest list */}
-            {hostGuests.length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 12 }}>
-                  Guest list
-                </p>
-                <div style={{ border: '1px solid var(--wcs-cream-dark)', borderRadius: 8, overflow: 'hidden', background: 'var(--wcs-white)' }}>
-                  {hostGuests.map((g, i) => {
-                    const statusColor = { attending: '#2c4a2e', maybe: 'var(--wcs-copper)', declined: '#999', no_response: '#bbb' }
-                    const statusLabel = { attending: 'Attending', maybe: 'Maybe', declined: 'Declined', no_response: 'No response' }
-                    return (
+            {hostGuests.length > 0 && (() => {
+              const filtered = guestFilter === 'all'
+                ? hostGuests
+                : hostGuests.filter(g => (g.rsvp_status || 'no_response') === guestFilter)
+              const sorted = [...filtered].sort((a, b) => {
+                const dir = guestSort.dir === 'asc' ? 1 : -1
+                if (guestSort.col === 'name') {
+                  const na = (a.contacts?.name || a.contacts?.email || '').toLowerCase()
+                  const nb = (b.contacts?.name || b.contacts?.email || '').toLowerCase()
+                  return dir * na.localeCompare(nb)
+                }
+                const sa = STATUS_ORDER[a.rsvp_status || 'no_response'] ?? 3
+                const sb = STATUS_ORDER[b.rsvp_status || 'no_response'] ?? 3
+                return dir * (sa - sb)
+              })
+              const colHdrStyle = { fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', display: 'flex', alignItems: 'center', gap: 3 }
+              const sortIcon = col => guestSort.col === col ? (guestSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ↕'
+              const FILTER_OPTIONS = [
+                { value: 'all',         label: 'All' },
+                { value: 'attending',   label: 'Attending' },
+                { value: 'maybe',       label: 'I Hope to Make It' },
+                { value: 'declined',    label: 'Send My Regrets' },
+                { value: 'no_response', label: 'Awaiting Word' },
+              ]
+              return (
+                <div style={{ marginTop: 24 }}>
+                  <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 10 }}>
+                    Guest list
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                    {FILTER_OPTIONS.map(opt => (
+                      <button key={opt.value} onClick={() => setGuestFilter(opt.value)} style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'Inter, system-ui', padding: '4px 10px', borderRadius: 20, border: '1px solid', cursor: 'pointer', background: guestFilter === opt.value ? 'var(--wcs-green-dark)' : 'transparent', color: guestFilter === opt.value ? 'var(--wcs-cream)' : 'var(--wcs-green-muted)', borderColor: guestFilter === opt.value ? 'var(--wcs-green-dark)' : 'var(--wcs-cream-dark)' }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ border: '1px solid var(--wcs-cream-dark)', borderRadius: 8, overflow: 'hidden', background: 'var(--wcs-white)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 16px', background: 'var(--wcs-cream-mid)', borderBottom: '0.5px solid var(--wcs-cream-dark)' }}>
+                      <button style={colHdrStyle} onClick={() => setGuestSort(p => ({ col: 'name', dir: p.col === 'name' && p.dir === 'asc' ? 'desc' : 'asc' }))}>
+                        Name{sortIcon('name')}
+                      </button>
+                      <button style={colHdrStyle} onClick={() => setGuestSort(p => ({ col: 'status', dir: p.col === 'status' && p.dir === 'asc' ? 'desc' : 'asc' }))}>
+                        Status{sortIcon('status')}
+                      </button>
+                    </div>
+                    {sorted.length === 0 ? (
+                      <p style={{ textAlign: 'center', padding: '20px 16px', fontSize: 13, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: 0 }}>No guests with this status.</p>
+                    ) : sorted.map((g, i) => (
                       <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderTop: i > 0 ? '0.5px solid var(--wcs-cream-dark)' : 'none', background: i % 2 === 0 ? 'var(--wcs-white)' : 'var(--wcs-cream-mid)' }}>
                         <div>
                           <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)', fontWeight: 500 }}>
                             {g.contacts?.name || g.contacts?.email || g.contacts?.phone}
                           </span>
                           {g.contacts?.name && g.contacts?.email && (
-                            <span style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginLeft: 8 }}>
-                              {g.contacts.email}
-                            </span>
+                            <span style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginLeft: 8 }}>{g.contacts.email}</span>
                           )}
                           {g.contacts?.phone && !g.contacts?.email && (
                             <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-copper)', background: '#f5ede5', padding: '2px 6px', borderRadius: 3, marginLeft: 8, fontFamily: 'Inter, system-ui' }}>SMS</span>
                           )}
                           {g.dietary_notes && (
-                            <p style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>
-                              Note: {g.dietary_notes}
+                            <p style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>Note: {g.dietary_notes}</p>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATUS_COLOR[g.rsvp_status || 'no_response'], fontFamily: 'Inter, system-ui' }}>
+                            {STATUS_LABEL[g.rsvp_status || 'no_response']}
+                          </span>
+                          {(g.rsvp_status === 'attending' || g.rsvp_status === 'maybe') && (g.guest_count || 1) > 0 && (
+                            <p style={{ fontSize: 10, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>
+                              {g.guest_count || 1} {(g.guest_count || 1) === 1 ? 'guest' : 'guests'}
                             </p>
                           )}
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: statusColor[g.rsvp_status] || '#bbb', fontFamily: 'Inter, system-ui', flexShrink: 0, marginLeft: 12 }}>
-                          {statusLabel[g.rsvp_status] || 'No response'}
-                        </span>
                       </div>
-                    )
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             {/* Bring list claims */}
             {hostBringList.length > 0 && (
@@ -880,14 +941,15 @@ const editInputStyle = {
 function HostRsvpSummary({ guests }) {
   const counts = guests.reduce((acc, g) => {
     const s = g.rsvp_status || 'no_response'
-    acc[s] = (acc[s] || 0) + 1
+    const heads = (s === 'attending' || s === 'maybe') ? (g.guest_count || 1) : 1
+    acc[s] = (acc[s] || 0) + heads
     return acc
   }, {})
   const items = [
-    { key: 'attending',  label: 'Attending',    color: 'var(--wcs-green-dark)' },
-    { key: 'maybe',      label: 'Maybe',         color: 'var(--wcs-copper)' },
-    { key: 'declined',   label: 'Declined',      color: '#999' },
-    { key: 'no_response',label: 'No response',   color: '#bbb' },
+    { key: 'attending',   label: 'Attending',          color: 'var(--wcs-green-dark)' },
+    { key: 'maybe',       label: 'I Hope to Make It',  color: 'var(--wcs-copper)' },
+    { key: 'declined',    label: 'Send My Regrets',    color: '#999' },
+    { key: 'no_response', label: 'Awaiting Word',      color: '#bbb' },
   ].filter(i => counts[i.key])
   if (!guests.length) return (
     <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui' }}>
@@ -906,7 +968,7 @@ function HostRsvpSummary({ guests }) {
   )
 }
 
-function RsvpForm({ selectedStatus, setSelectedStatus, dietaryNotes, setDietaryNotes, onSubmit, submitting, error }) {
+function RsvpForm({ selectedStatus, setSelectedStatus, dietaryNotes, setDietaryNotes, guestCount, setGuestCount, onSubmit, submitting, error }) {
   return (
     <div>
       <h2 className="text-center font-serif" style={{ fontSize: 22, color: 'var(--wcs-green-dark)', marginBottom: 24 }}>
@@ -942,6 +1004,21 @@ function RsvpForm({ selectedStatus, setSelectedStatus, dietaryNotes, setDietaryN
             </button>
           ))}
         </div>
+
+        {/* Guest count */}
+        {(selectedStatus === 'attending' || selectedStatus === 'maybe') && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 10 }}>
+              How many will be joining you?
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <button type="button" onClick={() => setGuestCount(c => Math.max(1, c - 1))} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--wcs-cream-dark)', background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui', fontSize: 18, color: 'var(--wcs-green-dark)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>−</button>
+              <span style={{ fontSize: 20, fontWeight: 300, color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', minWidth: 24, textAlign: 'center' }}>{guestCount}</span>
+              <button type="button" onClick={() => setGuestCount(c => c + 1)} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--wcs-cream-dark)', background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui', fontSize: 18, color: 'var(--wcs-green-dark)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>+</button>
+              <span style={{ fontSize: 12, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui' }}>{guestCount === 1 ? 'guest (including yourself)' : 'guests (including yourself)'}</span>
+            </div>
+          </div>
+        )}
 
         {/* Dietary notes */}
         {selectedStatus && selectedStatus !== 'declined' && (

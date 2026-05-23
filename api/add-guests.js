@@ -100,9 +100,13 @@ export default async function handler(req, res) {
   const guestList = []
 
   for (const { name, email } of guests) {
+    // Only include name in the upsert if a real name was provided — otherwise
+    // the ON CONFLICT UPDATE would overwrite an existing real name with null/empty.
+    const upsertData = { email }
+    if (name) upsertData.name = name
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
-      .upsert({ email, name }, { onConflict: 'email' })
+      .upsert(upsertData, { onConflict: 'email' })
       .select()
       .single()
     if (contactError) { console.error('contact upsert:', contactError); continue }

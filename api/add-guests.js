@@ -100,16 +100,31 @@ export default async function handler(req, res) {
   const guestList = []
 
   for (const { name, email } of guests) {
-    // Only include name in the upsert if a real name was provided — otherwise
-    // the ON CONFLICT UPDATE would overwrite an existing real name with null/empty.
-    const upsertData = { email }
-    if (name) upsertData.name = name
-    const { data: contact, error: contactError } = await supabase
+    // Find-or-create: look up by email first to avoid hitting the NOT NULL
+    // constraint on contacts.name when inserting a brand-new address with no name.
+    let contact
+    const { data: found } = await supabase
       .from('contacts')
-      .upsert(upsertData, { onConflict: 'email' })
-      .select()
-      .single()
-    if (contactError) { console.error('contact upsert:', contactError); continue }
+      .select('id')
+      .eq('email', email)
+      .maybeSingle()
+
+    if (found) {
+      contact = found
+      // Only update name when a real name was provided — never overwrite an
+      // existing name with null/empty.
+      if (name) {
+        await supabase.from('contacts').update({ name }).eq('id', found.id)
+      }
+    } else {
+      const { data: created, error: insertError } = await supabase
+        .from('contacts')
+        .insert({ email, name: name || email })
+        .select('id')
+        .single()
+      if (insertError) { console.error('contact insert:', insertError); continue }
+      contact = created
+    }
 
     const { data: existing } = await supabase
       .from('guests')

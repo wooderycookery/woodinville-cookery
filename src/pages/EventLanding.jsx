@@ -111,6 +111,15 @@ export default function EventLanding() {
   const [galleryOpening, setGalleryOpening] = useState(null)
   const [galleryOpenError, setGalleryOpenError] = useState('')
 
+  const [walkInName, setWalkInName] = useState('')
+  const [walkInEmail, setWalkInEmail] = useState('')
+  const [walkInSubmitting, setWalkInSubmitting] = useState(false)
+  const [walkInError, setWalkInError] = useState('')
+  const [walkInToken, setWalkInToken] = useState(null)
+  const [authChecked, setAuthChecked] = useState(false)
+
+  const activeToken = token || walkInToken
+
   useEffect(() => {
     supabase
       .from('events')
@@ -148,6 +157,7 @@ export default function EventLanding() {
               setHostBringClaims(claimsData || [])
             }
           }
+          setAuthChecked(true)
         })
       })
   }, [eventId])
@@ -272,7 +282,7 @@ export default function EventLanding() {
       const res = await fetch('/api/submit-rsvp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, rsvpStatus: selectedStatus, dietaryNotes, guestCount, appUrl }),
+        body: JSON.stringify({ token: activeToken, rsvpStatus: selectedStatus, dietaryNotes, guestCount, appUrl }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to submit RSVP')
@@ -342,6 +352,45 @@ export default function EventLanding() {
       setGalleryOpenError(err.message)
     } finally {
       setGalleryOpening(null)
+    }
+  }
+
+  async function handleWalkInSubmit(e) {
+    e.preventDefault()
+    if (!selectedStatus || !walkInName.trim()) return
+    setWalkInSubmitting(true)
+    setWalkInError('')
+    try {
+      const appUrl = import.meta.env.VITE_APP_URL || window.location.origin
+      const res = await fetch('/api/walk-in-rsvp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          name: walkInName.trim(),
+          email: walkInEmail.trim() || null,
+          rsvpStatus: selectedStatus,
+          dietaryNotes,
+          guestCount,
+          appUrl,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to submit RSVP')
+      setWalkInToken(data.token)
+      localStorage.setItem('wcs_guest_token', data.token)
+      setGuest({
+        valid: true,
+        guestId: data.guestId,
+        rsvpStatus: data.rsvpStatus,
+        guestName: data.guestName,
+        guestEmail: data.guestEmail,
+      })
+      setSubmitted(true)
+    } catch (err) {
+      setWalkInError(err.message)
+    } finally {
+      setWalkInSubmitting(false)
     }
   }
 
@@ -520,7 +569,8 @@ export default function EventLanding() {
               <ConfirmationBlock
                 rsvpStatus={selectedStatus}
                 onUpdate={() => setSubmitted(false)}
-                icsUrl={selectedStatus !== 'declined' ? `/api/generate-ics?eventId=${eventId}&token=${token}` : null}
+                icsUrl={selectedStatus !== 'declined' ? `/api/generate-ics?eventId=${eventId}&token=${activeToken}` : null}
+                hasEmail={!!guest?.guestEmail}
               />
             ) : (
               <RsvpForm
@@ -535,17 +585,33 @@ export default function EventLanding() {
                 error={rsvpError}
               />
             )
-          ) : (
+          ) : token ? (
             <p className="text-center" style={{ fontSize: 13, color: 'var(--wcs-green-muted)', letterSpacing: '0.05em' }}>
-              The full invitation follows.
+              This invitation link is no longer valid.
             </p>
+          ) : !authChecked || isHost ? null : (
+            <WalkInRsvpForm
+              selectedStatus={selectedStatus}
+              setSelectedStatus={setSelectedStatus}
+              dietaryNotes={dietaryNotes}
+              setDietaryNotes={setDietaryNotes}
+              guestCount={guestCount}
+              setGuestCount={setGuestCount}
+              walkInName={walkInName}
+              setWalkInName={setWalkInName}
+              walkInEmail={walkInEmail}
+              setWalkInEmail={setWalkInEmail}
+              onSubmit={handleWalkInSubmit}
+              submitting={walkInSubmitting}
+              error={walkInError}
+            />
           )}
         </div>
 
         {/* Bring-list — shown after RSVP if attending or maybe */}
         {submitted && (selectedStatus === 'attending' || selectedStatus === 'maybe') && guest && (
           <div style={{ marginTop: 32 }}>
-            <BringListGuest eventId={eventId} guestId={guest.guestId} token={token} />
+            <BringListGuest eventId={eventId} guestId={guest.guestId} token={activeToken} />
           </div>
         )}
 
@@ -557,7 +623,7 @@ export default function EventLanding() {
               eventId={eventId}
               isHost={isHost}
               hostUserId={hostUserId}
-              guestToken={token}
+              guestToken={activeToken}
               guestName={guest?.guestName}
             />
           </div>
@@ -573,7 +639,7 @@ export default function EventLanding() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               {event.pre_gallery_open && (
                 <Link
-                  to={`/gallery/${eventId}/pre${token ? `?token=${token}` : ''}`}
+                  to={`/gallery/${eventId}/pre${activeToken ? `?token=${activeToken}` : ''}`}
                   style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', textDecoration: 'none', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, padding: '10px 20px' }}
                 >
                   Pre-event photographs →
@@ -581,7 +647,7 @@ export default function EventLanding() {
               )}
               {event.post_gallery_open && (
                 <Link
-                  to={`/gallery/${eventId}/post${token ? `?token=${token}` : ''}`}
+                  to={`/gallery/${eventId}/post${activeToken ? `?token=${activeToken}` : ''}`}
                   style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', textDecoration: 'none', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, padding: '10px 20px' }}
                 >
                   What we remember →
@@ -1076,7 +1142,7 @@ function RsvpForm({ selectedStatus, setSelectedStatus, dietaryNotes, setDietaryN
   )
 }
 
-function ConfirmationBlock({ rsvpStatus, onUpdate, icsUrl }) {
+function ConfirmationBlock({ rsvpStatus, onUpdate, icsUrl, hasEmail = true }) {
   const copy = CONFIRMATION[rsvpStatus] || CONFIRMATION.attending
   return (
     <div className="text-center">
@@ -1084,9 +1150,11 @@ function ConfirmationBlock({ rsvpStatus, onUpdate, icsUrl }) {
       <p className="font-serif" style={{ fontSize: 20, color: 'var(--wcs-green-dark)', marginBottom: 8 }}>
         {copy.heading()}
       </p>
-      <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 16 }}>
-        {copy.sub}
-      </p>
+      {hasEmail && (
+        <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 16 }}>
+          {copy.sub}
+        </p>
+      )}
       {icsUrl && (
         <a
           href={icsUrl}
@@ -1101,6 +1169,117 @@ function ConfirmationBlock({ rsvpStatus, onUpdate, icsUrl }) {
       >
         Update my RSVP
       </button>
+    </div>
+  )
+}
+
+function WalkInRsvpForm({
+  selectedStatus, setSelectedStatus,
+  dietaryNotes, setDietaryNotes,
+  guestCount, setGuestCount,
+  walkInName, setWalkInName,
+  walkInEmail, setWalkInEmail,
+  onSubmit, submitting, error,
+}) {
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 14px',
+    border: '1px solid var(--wcs-cream-dark)',
+    borderRadius: 6,
+    background: 'var(--wcs-white)',
+    fontFamily: 'Inter, system-ui',
+    fontSize: 14,
+    color: 'var(--wcs-green-dark)',
+    boxSizing: 'border-box',
+    outline: 'none',
+  }
+  const canSubmit = selectedStatus && walkInName.trim() && !submitting
+  return (
+    <div>
+      <h2 className="text-center font-serif" style={{ fontSize: 22, color: 'var(--wcs-green-dark)', marginBottom: 24 }}>
+        Will you be joining us?
+      </h2>
+      <form onSubmit={onSubmit}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          <input
+            type="text"
+            required
+            placeholder="Your name"
+            value={walkInName}
+            onChange={e => setWalkInName(e.target.value)}
+            style={inputStyle}
+          />
+          <input
+            type="email"
+            placeholder="Email address (optional — for your confirmation)"
+            value={walkInEmail}
+            onChange={e => setWalkInEmail(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+          {RSVP_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setSelectedStatus(value)}
+              style={{
+                flex: 1,
+                minWidth: 100,
+                padding: '12px 16px',
+                borderRadius: 6,
+                border: `1px solid ${selectedStatus === value ? 'var(--wcs-green-dark)' : 'var(--wcs-cream-dark)'}`,
+                background: selectedStatus === value ? 'var(--wcs-green-dark)' : 'transparent',
+                color: selectedStatus === value ? 'var(--wcs-cream)' : 'var(--wcs-green-dark)',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontSize: 12,
+                fontWeight: 500,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {(selectedStatus === 'attending' || selectedStatus === 'maybe') && (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 10 }}>
+              How many will be joining you?
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <button type="button" onClick={() => setGuestCount(c => Math.max(1, c - 1))} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--wcs-cream-dark)', background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui', fontSize: 18, color: 'var(--wcs-green-dark)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>−</button>
+              <span style={{ fontSize: 20, fontWeight: 300, color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', minWidth: 24, textAlign: 'center' }}>{guestCount}</span>
+              <button type="button" onClick={() => setGuestCount(c => c + 1)} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid var(--wcs-cream-dark)', background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui', fontSize: 18, color: 'var(--wcs-green-dark)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>+</button>
+              <span style={{ fontSize: 12, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui' }}>{guestCount === 1 ? 'guest (including yourself)' : 'guests (including yourself)'}</span>
+            </div>
+          </div>
+        )}
+
+        {selectedStatus && selectedStatus !== 'declined' && (
+          <textarea
+            value={dietaryNotes}
+            onChange={e => setDietaryNotes(e.target.value)}
+            placeholder="Any dietary notes for the host?"
+            rows={3}
+            style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui, sans-serif', fontSize: 14, color: 'var(--wcs-green-dark)', resize: 'vertical', marginBottom: 16, boxSizing: 'border-box' }}
+          />
+        )}
+
+        {error && <p style={{ color: '#b91c1c', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          style={{ display: 'block', width: '100%', maxWidth: 280, margin: '0 auto', padding: '14px 40px', background: canSubmit ? 'var(--wcs-green-dark)' : 'var(--wcs-cream-dark)', color: 'var(--wcs-cream)', border: 'none', borderRadius: 6, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: canSubmit ? 'pointer' : 'not-allowed' }}
+        >
+          {submitting ? 'Sending…' : "Yes, I'll be there"}
+        </button>
+      </form>
     </div>
   )
 }

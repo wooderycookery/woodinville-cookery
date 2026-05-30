@@ -116,6 +116,7 @@ export default function EventLanding() {
   const [walkInSubmitting, setWalkInSubmitting] = useState(false)
   const [walkInError, setWalkInError] = useState('')
   const [walkInToken, setWalkInToken] = useState(null)
+  const [walkInOptIn, setWalkInOptIn] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
 
   const activeToken = token || walkInToken
@@ -372,6 +373,7 @@ export default function EventLanding() {
           rsvpStatus: selectedStatus,
           dietaryNotes,
           guestCount,
+          optIn: walkInOptIn,
           appUrl,
         }),
       })
@@ -601,6 +603,8 @@ export default function EventLanding() {
               setWalkInName={setWalkInName}
               walkInEmail={walkInEmail}
               setWalkInEmail={setWalkInEmail}
+              walkInOptIn={walkInOptIn}
+              setWalkInOptIn={setWalkInOptIn}
               onSubmit={handleWalkInSubmit}
               submitting={walkInSubmitting}
               error={walkInError}
@@ -1173,12 +1177,19 @@ function ConfirmationBlock({ rsvpStatus, onUpdate, icsUrl, hasEmail = true }) {
   )
 }
 
+const WALK_IN_SUBMIT_LABELS = {
+  attending: "Count me in",
+  maybe:     "I'll try my best",
+  declined:  "Send my regrets",
+}
+
 function WalkInRsvpForm({
   selectedStatus, setSelectedStatus,
   dietaryNotes, setDietaryNotes,
   guestCount, setGuestCount,
   walkInName, setWalkInName,
   walkInEmail, setWalkInEmail,
+  walkInOptIn, setWalkInOptIn,
   onSubmit, submitting, error,
 }) {
   const inputStyle = {
@@ -1194,13 +1205,21 @@ function WalkInRsvpForm({
     outline: 'none',
   }
   const canSubmit = selectedStatus && walkInName.trim() && !submitting
+  const submitLabel = submitting ? 'Sending…' : (WALK_IN_SUBMIT_LABELS[selectedStatus] || 'Count me in')
+
   return (
     <div>
+      <p className="text-center" style={{ fontSize: 14, color: 'var(--wcs-green-light)', lineHeight: 1.8, marginBottom: 28, fontFamily: 'Inter, system-ui' }}>
+        Full details, cooking sign-ups, and the formal invitation follow — stay tuned.
+      </p>
+
       <h2 className="text-center font-serif" style={{ fontSize: 22, color: 'var(--wcs-green-dark)', marginBottom: 24 }}>
         Will you be joining us?
       </h2>
+
       <form onSubmit={onSubmit}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+        {/* Name */}
+        <div style={{ marginBottom: 8 }}>
           <input
             type="text"
             required
@@ -1209,15 +1228,36 @@ function WalkInRsvpForm({
             onChange={e => setWalkInName(e.target.value)}
             style={inputStyle}
           />
+        </div>
+
+        {/* Email + helper text */}
+        <div style={{ marginBottom: 20 }}>
           <input
             type="email"
-            placeholder="Email address (optional — for your confirmation)"
+            placeholder="Email address"
             value={walkInEmail}
             onChange={e => setWalkInEmail(e.target.value)}
             style={inputStyle}
           />
+          <p style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginTop: 6, lineHeight: 1.6 }}>
+            We'll send your confirmation and event updates here — you won't want to miss them.
+          </p>
         </div>
 
+        {/* Opt-in checkbox */}
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 20, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={walkInOptIn}
+            onChange={e => setWalkInOptIn(e.target.checked)}
+            style={{ marginTop: 2, accentColor: 'var(--wcs-green-dark)', flexShrink: 0 }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--wcs-green-mid)', fontFamily: 'Inter, system-ui', lineHeight: 1.6 }}>
+            Keep me updated about future WCS events
+          </span>
+        </label>
+
+        {/* Status buttons (radio-style) */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
           {RSVP_OPTIONS.map(({ value, label }) => (
             <button
@@ -1246,6 +1286,7 @@ function WalkInRsvpForm({
           ))}
         </div>
 
+        {/* Guest count */}
         {(selectedStatus === 'attending' || selectedStatus === 'maybe') && (
           <div style={{ marginBottom: 20 }}>
             <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 10 }}>
@@ -1260,6 +1301,7 @@ function WalkInRsvpForm({
           </div>
         )}
 
+        {/* Dietary notes */}
         {selectedStatus && selectedStatus !== 'declined' && (
           <textarea
             value={dietaryNotes}
@@ -1277,7 +1319,7 @@ function WalkInRsvpForm({
           disabled={!canSubmit}
           style={{ display: 'block', width: '100%', maxWidth: 280, margin: '0 auto', padding: '14px 40px', background: canSubmit ? 'var(--wcs-green-dark)' : 'var(--wcs-cream-dark)', color: 'var(--wcs-cream)', border: 'none', borderRadius: 6, fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: canSubmit ? 'pointer' : 'not-allowed' }}
         >
-          {submitting ? 'Sending…' : "Yes, I'll be there"}
+          {submitLabel}
         </button>
       </form>
     </div>

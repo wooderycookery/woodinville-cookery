@@ -76,7 +76,7 @@ function confirmationText({ eventName, eventDate, rsvpStatus, eventUrl }) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { eventId, name, email, rsvpStatus, dietaryNotes, guestCount, appUrl } = req.body
+  const { eventId, name, email, rsvpStatus, dietaryNotes, guestCount, optIn, appUrl } = req.body
 
   if (!eventId || !name?.trim() || !rsvpStatus) {
     return res.status(400).json({ error: 'eventId, name, and rsvpStatus are required' })
@@ -100,17 +100,24 @@ export default async function handler(req, res) {
   if (normalizedEmail) {
     const { data: found } = await supabase
       .from('contacts')
-      .select('id')
+      .select('id, tags')
       .eq('email', normalizedEmail)
       .maybeSingle()
 
     if (found) {
       contact = found
-      await supabase.from('contacts').update({ name: trimmedName }).eq('id', found.id)
+      const updates = { name: trimmedName }
+      if (optIn) {
+        const existing = found.tags || []
+        if (!existing.includes('wcs_updates')) updates.tags = [...existing, 'wcs_updates']
+      }
+      await supabase.from('contacts').update(updates).eq('id', found.id)
     } else {
+      const insertData = { email: normalizedEmail, name: trimmedName }
+      if (optIn) insertData.tags = ['wcs_updates']
       const { data: created, error: insertError } = await supabase
         .from('contacts')
-        .insert({ email: normalizedEmail, name: trimmedName })
+        .insert(insertData)
         .select('id')
         .single()
       if (insertError) return res.status(500).json({ error: 'Failed to create contact' })
@@ -119,9 +126,11 @@ export default async function handler(req, res) {
   } else {
     // No email — use a placeholder to satisfy the NOT NULL constraint on contacts.email
     const placeholder = `walkin_${crypto.randomUUID()}@noemail.invalid`
+    const insertData = { email: placeholder, name: trimmedName }
+    if (optIn) insertData.tags = ['wcs_updates']
     const { data: created, error: insertError } = await supabase
       .from('contacts')
-      .insert({ email: placeholder, name: trimmedName })
+      .insert(insertData)
       .select('id')
       .single()
     if (insertError) return res.status(500).json({ error: 'Failed to create contact' })

@@ -497,7 +497,7 @@ export default function EventLanding() {
 
         {/* Teaser / description */}
         {teaserLine && (
-          <p className="text-center" style={{ fontSize: 15, color: 'var(--wcs-green-mid)', lineHeight: 1.8, maxWidth: 480, margin: '0 auto' }}>
+          <p className="text-center" style={{ fontSize: 15, color: 'var(--wcs-green-mid)', lineHeight: 1.8, maxWidth: 480, margin: '0 auto', whiteSpace: 'pre-wrap' }}>
             {teaserLine}
           </p>
         )}

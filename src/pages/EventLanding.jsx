@@ -70,6 +70,37 @@ function spellNumber(n) {
   return String(n)
 }
 
+function countdownLabel(dateStr) {
+  if (!dateStr) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const event = new Date(dateStr + 'T00:00:00')
+  event.setHours(0, 0, 0, 0)
+  const diff = Math.round((event - today) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return null
+  if (diff === 0) return 'This evening'
+  if (diff === 1) return 'Tomorrow'
+  return `${spellNumber(diff)} days away`
+}
+
+function formatStartTime(timestamptz) {
+  if (!timestamptz) return null
+  return new Date(timestamptz).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles',
+  })
+}
+
+function formatDateRange(startDateStr, endDateStr) {
+  const start = new Date(startDateStr + 'T12:00:00')
+  const end   = new Date(endDateStr   + 'T12:00:00')
+  const opts  = { timeZone: 'America/Los_Angeles' }
+  const sm = start.toLocaleDateString('en-US', { month: 'long', ...opts })
+  const em = end.toLocaleDateString('en-US',   { month: 'long', ...opts })
+  const sd = start.toLocaleDateString('en-US', { day: 'numeric', ...opts })
+  const ed = end.toLocaleDateString('en-US',   { day: 'numeric', ...opts })
+  return sm === em ? `${sm} ${sd}–${ed}` : `${sm} ${sd} – ${em} ${ed}`
+}
+
 const CONFIRMATION = {
   attending: { heading: () => "We'll set a place for you.",             sub: 'A note has been sent to your inbox.' },
   maybe:     { heading: () => 'We hope the evening finds you free.',    sub: 'A note has been sent to your inbox.' },
@@ -119,6 +150,13 @@ export default function EventLanding() {
   const [galleryOpening, setGalleryOpening] = useState(null)
   const [galleryOpenError, setGalleryOpenError] = useState('')
 
+  const [blastSubject, setBlastSubject]     = useState('')
+  const [blastNote, setBlastNote]           = useState('')
+  const [blastConfirm, setBlastConfirm]     = useState(false)
+  const [blastSending, setBlastSending]     = useState(false)
+  const [blastResult, setBlastResult]       = useState(null)
+  const [blastError, setBlastError]         = useState('')
+
   const [walkInName, setWalkInName] = useState('')
   const [walkInEmail, setWalkInEmail] = useState('')
   const [walkInSubmitting, setWalkInSubmitting] = useState(false)
@@ -147,7 +185,7 @@ export default function EventLanding() {
   useEffect(() => {
     supabase
       .from('events')
-      .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, pre_gallery_open, post_gallery_open, guest_list_reveal_date')
+      .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, pre_gallery_open, post_gallery_open, guest_list_reveal_date, start_time, all_day, multi_day_end, end_line, details')
       .eq('id', eventId)
       .single()
       .then(async ({ data, error }) => {
@@ -229,6 +267,11 @@ export default function EventLanding() {
       what_to_expect: event.what_to_expect || '',
       rsvp_deadline:  event.rsvp_deadline || '',
       guest_list_reveal_date: event.guest_list_reveal_date || '',
+      start_time:     event.start_time ? new Date(event.start_time).toISOString().slice(0, 16) : '',
+      all_day:        event.all_day || false,
+      multi_day_end:  event.multi_day_end || '',
+      end_line:       event.end_line || 'until the last bottle is empty',
+      details:        event.details || '',
     })
     setNewHeroImage(null)
     setHeroPreview(heroImageUrl || null)
@@ -285,9 +328,14 @@ export default function EventLanding() {
           what_to_expect: editForm.what_to_expect || null,
           rsvp_deadline:  editForm.rsvp_deadline || null,
           guest_list_reveal_date: editForm.guest_list_reveal_date || null,
+          start_time:     editForm.start_time || null,
+          all_day:        editForm.all_day || false,
+          multi_day_end:  editForm.multi_day_end || null,
+          end_line:       editForm.end_line || null,
+          details:        editForm.details || null,
         })
         .eq('id', event.id)
-        .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, guest_list_reveal_date')
+        .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, guest_list_reveal_date, start_time, all_day, multi_day_end, end_line, details')
         .single()
       if (error) {
         console.error('Event update error:', error)
@@ -471,6 +519,34 @@ export default function EventLanding() {
     }
   }
 
+  async function handleBlast(e) {
+    e.preventDefault()
+    if (!blastSubject.trim() || !blastNote.trim()) return
+    setBlastSending(true)
+    setBlastError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/event-blast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ eventId: event.id, subject: blastSubject, note: blastNote }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send')
+      setBlastResult(data)
+      setBlastConfirm(false)
+      setBlastSubject('')
+      setBlastNote('')
+    } catch (err) {
+      setBlastError(err.message || 'Could not send update.')
+    } finally {
+      setBlastSending(false)
+    }
+  }
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--wcs-cream)' }}>
       <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--wcs-cream-dark)', borderTopColor: 'var(--wcs-green-dark)' }} />
@@ -487,9 +563,14 @@ export default function EventLanding() {
   )
 
   const { heroImageUrl, hostNames } = parseVibe(event.vibe)
-  const teaserLine = event.description
-  const dateLabel  = formatDateLabel(event.date)
-  const dateShort  = formatDateShort(event.date)
+  const teaserLine  = event.description
+  const dateLabel   = event.multi_day_end
+    ? formatDateRange(event.date, event.multi_day_end).toUpperCase()
+    : formatDateLabel(event.date)
+  const dateShort   = formatDateShort(event.date)
+  const countdown   = countdownLabel(event.date)
+  const startTime   = !event.all_day ? formatStartTime(event.start_time) : null
+  const endLine     = event.end_line || 'until the last bottle is empty'
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--wcs-cream)' }}>
@@ -554,7 +635,22 @@ export default function EventLanding() {
         {/* Date label */}
         <p className="text-center" style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 8 }}>
           {dateLabel}
+          {startTime && <span style={{ marginLeft: 10 }}>· {startTime}</span>}
         </p>
+
+        {/* Countdown */}
+        {countdown && (
+          <p className="text-center font-serif" style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--wcs-green-muted)', marginBottom: 4 }}>
+            {countdown}
+          </p>
+        )}
+
+        {/* End line */}
+        {startTime && (
+          <p className="text-center font-serif" style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--wcs-green-muted)', marginBottom: 0 }}>
+            {endLine}
+          </p>
+        )}
 
         {/* Event name */}
         <h1 className="text-center font-serif" style={{ fontSize: 32, color: 'var(--wcs-green-dark)', marginTop: 8, lineHeight: 1.25 }}>
@@ -601,6 +697,15 @@ export default function EventLanding() {
             </p>
             <p style={{ fontSize: 14, color: 'var(--wcs-green-mid)', lineHeight: 1.8, margin: 0, fontFamily: 'Inter, system-ui' }}>
               {event.what_to_expect}
+            </p>
+          </div>
+        )}
+
+        {/* Details block */}
+        {event.details && (
+          <div style={{ marginTop: 28, borderTop: '0.5px solid var(--wcs-cream-dark)', paddingTop: 24 }}>
+            <p className="font-serif" style={{ fontSize: 15, color: 'var(--wcs-green-mid)', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap' }}>
+              {event.details}
             </p>
           </div>
         )}
@@ -1007,6 +1112,72 @@ export default function EventLanding() {
               </form>
             </div>
 
+            {/* Guest update blast */}
+            <div style={{ marginTop: 28 }}>
+              <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 12 }}>
+                Send update to guests
+              </p>
+              {blastResult ? (
+                <p style={{ fontSize: 13, color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui' }}>
+                  {blastResult.sent} {blastResult.sent === 1 ? 'email' : 'emails'} sent.
+                  {blastResult.failed > 0 && ` ${blastResult.failed} failed.`}
+                  {' '}
+                  <button onClick={() => setBlastResult(null)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'underline' }}>Send another</button>
+                </p>
+              ) : blastConfirm ? (
+                <div style={{ background: 'var(--wcs-white)', border: '1px solid var(--wcs-cream-dark)', borderRadius: 8, padding: '16px 20px' }}>
+                  <p style={{ fontSize: 13, color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', marginBottom: 4 }}>
+                    <strong>"{blastSubject}"</strong>
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginBottom: 16 }}>
+                    This will reach {hostGuests.filter(g => (g.rsvp_status === 'attending' || g.rsvp_status === 'maybe') && g.contacts?.email).length} guests who responded yes or maybe.
+                  </p>
+                  {blastError && <p style={{ fontSize: 12, color: '#b91c1c', marginBottom: 10, fontFamily: 'Inter, system-ui' }}>{blastError}</p>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={handleBlast}
+                      disabled={blastSending}
+                      style={{ padding: '10px 20px', background: blastSending ? 'var(--wcs-cream-dark)' : 'var(--wcs-green-dark)', color: 'var(--wcs-cream)', border: 'none', borderRadius: 6, fontFamily: 'Inter, system-ui', fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: blastSending ? 'not-allowed' : 'pointer' }}
+                    >
+                      {blastSending ? 'Sending…' : 'Confirm & send'}
+                    </button>
+                    <button
+                      onClick={() => { setBlastConfirm(false); setBlastError('') }}
+                      style={{ padding: '10px 20px', background: 'transparent', color: 'var(--wcs-green-dark)', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, fontFamily: 'Inter, system-ui', fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={e => { e.preventDefault(); setBlastConfirm(true) }}>
+                  <input
+                    type="text"
+                    value={blastSubject}
+                    onChange={e => setBlastSubject(e.target.value)}
+                    placeholder="Subject line"
+                    required
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui', fontSize: 14, color: 'var(--wcs-green-dark)', boxSizing: 'border-box', marginBottom: 8 }}
+                  />
+                  <textarea
+                    value={blastNote}
+                    onChange={e => setBlastNote(e.target.value)}
+                    placeholder="Let your guests know what's changed, what to expect, or simply that you're looking forward to seeing them."
+                    rows={4}
+                    required
+                    style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui', fontSize: 14, color: 'var(--wcs-green-dark)', boxSizing: 'border-box', resize: 'vertical', marginBottom: 8 }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!blastSubject.trim() || !blastNote.trim()}
+                    style={{ padding: '10px 24px', background: blastSubject.trim() && blastNote.trim() ? 'var(--wcs-green-dark)' : 'var(--wcs-cream-dark)', color: 'var(--wcs-cream)', border: 'none', borderRadius: 6, fontFamily: 'Inter, system-ui', fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: blastSubject.trim() && blastNote.trim() ? 'pointer' : 'not-allowed' }}
+                  >
+                    Review & send
+                  </button>
+                </form>
+              )}
+            </div>
+
           </div>
         )}
 
@@ -1049,6 +1220,22 @@ export default function EventLanding() {
                 <div>
                   <label style={editLabelStyle}>Date</label>
                   <input type="date" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))} style={editInputStyle} />
+                </div>
+                <div>
+                  <label style={editLabelStyle}>Start time</label>
+                  <input type="datetime-local" value={editForm.start_time} onChange={e => setEditForm(p => ({ ...p, start_time: e.target.value }))} style={editInputStyle} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" id="all_day" checked={editForm.all_day} onChange={e => setEditForm(p => ({ ...p, all_day: e.target.checked }))} style={{ accentColor: 'var(--wcs-green-dark)', flexShrink: 0 }} />
+                  <label htmlFor="all_day" style={{ ...editLabelStyle, margin: 0, cursor: 'pointer' }}>All day</label>
+                </div>
+                <div>
+                  <label style={editLabelStyle}>Multi-day end date</label>
+                  <input type="date" value={editForm.multi_day_end} onChange={e => setEditForm(p => ({ ...p, multi_day_end: e.target.value }))} style={editInputStyle} />
+                </div>
+                <div>
+                  <label style={editLabelStyle}>End line</label>
+                  <input type="text" value={editForm.end_line} onChange={e => setEditForm(p => ({ ...p, end_line: e.target.value }))} placeholder="until the last bottle is empty" style={editInputStyle} />
                 </div>
                 <div>
                   <label style={editLabelStyle}>RSVP deadline</label>
@@ -1111,6 +1298,11 @@ export default function EventLanding() {
                   <span style={{ color: 'var(--wcs-green-muted)', marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>{editForm.what_to_expect?.length || 0}/280</span>
                 </label>
                 <textarea rows={3} value={editForm.what_to_expect} onChange={e => setEditForm(p => ({ ...p, what_to_expect: e.target.value.slice(0, 280) }))} style={{ ...editInputStyle, resize: 'vertical' }} />
+              </div>
+
+              <div>
+                <label style={editLabelStyle}>Details</label>
+                <textarea rows={4} value={editForm.details} onChange={e => setEditForm(p => ({ ...p, details: e.target.value }))} placeholder="Menu, activities, dress code — anything guests should know" style={{ ...editInputStyle, resize: 'vertical' }} />
               </div>
 
               {saveError && <p style={{ fontSize: 13, color: '#b91c1c', margin: 0 }}>{saveError}</p>}

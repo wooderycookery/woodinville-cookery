@@ -215,7 +215,7 @@ export default function IdeasBoard() {
             Gather With Us
           </h1>
           <p style={{ fontSize: 14, color: 'var(--wcs-green-light)', fontFamily: 'Inter, system-ui', lineHeight: 1.7, maxWidth: 480, margin: '0 auto' }}>
-            Share your inspiration, we'll shape it together.
+            Float an idea.
           </p>
           <div style={{ width: 40, height: 1, background: 'var(--wcs-copper)', margin: '24px auto 0' }} />
         </div>

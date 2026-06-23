@@ -25,12 +25,9 @@ function formatDateShort(dateStr) {
 
 function formatRsvpDeadline(dateStr) {
   if (!dateStr) return null
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+  const d = new Date(dateStr.slice(0, 10) + 'T12:00:00')
+  if (isNaN(d)) return null
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function parseVibe(vibe) {
@@ -1222,22 +1219,6 @@ export default function EventLanding() {
                   <input type="date" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))} style={editInputStyle} />
                 </div>
                 <div>
-                  <label style={editLabelStyle}>Start time</label>
-                  <input type="datetime-local" value={editForm.start_time} onChange={e => setEditForm(p => ({ ...p, start_time: e.target.value }))} style={editInputStyle} />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <input type="checkbox" id="all_day" checked={editForm.all_day} onChange={e => setEditForm(p => ({ ...p, all_day: e.target.checked }))} style={{ accentColor: 'var(--wcs-green-dark)', flexShrink: 0 }} />
-                  <label htmlFor="all_day" style={{ ...editLabelStyle, margin: 0, cursor: 'pointer' }}>All day</label>
-                </div>
-                <div>
-                  <label style={editLabelStyle}>Multi-day end date</label>
-                  <input type="date" value={editForm.multi_day_end} onChange={e => setEditForm(p => ({ ...p, multi_day_end: e.target.value }))} style={editInputStyle} />
-                </div>
-                <div>
-                  <label style={editLabelStyle}>End line</label>
-                  <input type="text" value={editForm.end_line} onChange={e => setEditForm(p => ({ ...p, end_line: e.target.value }))} placeholder="until the last bottle is empty" style={editInputStyle} />
-                </div>
-                <div>
                   <label style={editLabelStyle}>RSVP deadline</label>
                   <input type="date" value={editForm.rsvp_deadline} onChange={e => setEditForm(p => ({ ...p, rsvp_deadline: e.target.value }))} style={editInputStyle} />
                 </div>
@@ -1298,6 +1279,28 @@ export default function EventLanding() {
                   <span style={{ color: 'var(--wcs-green-muted)', marginLeft: 8, textTransform: 'none', letterSpacing: 0 }}>{editForm.what_to_expect?.length || 0}/280</span>
                 </label>
                 <textarea rows={3} value={editForm.what_to_expect} onChange={e => setEditForm(p => ({ ...p, what_to_expect: e.target.value.slice(0, 280) }))} style={{ ...editInputStyle, resize: 'vertical' }} />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" id="all_day" checked={editForm.all_day} onChange={e => setEditForm(p => ({ ...p, all_day: e.target.checked }))} style={{ accentColor: 'var(--wcs-green-dark)', flexShrink: 0 }} />
+                <label htmlFor="all_day" style={{ ...editLabelStyle, margin: 0, cursor: 'pointer' }}>All day</label>
+              </div>
+
+              {!editForm.all_day && (
+                <div>
+                  <label style={editLabelStyle}>Start time</label>
+                  <input type="datetime-local" value={editForm.start_time} onChange={e => setEditForm(p => ({ ...p, start_time: e.target.value }))} style={editInputStyle} />
+                </div>
+              )}
+
+              <div>
+                <label style={editLabelStyle}>Multi-day end date</label>
+                <input type="date" value={editForm.multi_day_end} onChange={e => setEditForm(p => ({ ...p, multi_day_end: e.target.value }))} style={editInputStyle} />
+              </div>
+
+              <div>
+                <label style={editLabelStyle}>End line</label>
+                <input type="text" value={editForm.end_line} onChange={e => setEditForm(p => ({ ...p, end_line: e.target.value }))} placeholder="until the last bottle is empty" style={editInputStyle} />
               </div>
 
               <div>

@@ -100,18 +100,22 @@ export default async function handler(req, res) {
   if (normalizedEmail) {
     const { data: found } = await supabase
       .from('contacts')
-      .select('id, tags')
+      .select('id, name, tags')
       .eq('email', normalizedEmail)
       .maybeSingle()
 
     if (found) {
       contact = found
-      const updates = { name: trimmedName }
+      const updates = {}
+      // Only overwrite an existing name when it's a placeholder (email used as name fallback)
+      if (!found.name || found.name === normalizedEmail) updates.name = trimmedName
       if (optIn) {
         const existing = found.tags || []
         if (!existing.includes('wcs_updates')) updates.tags = [...existing, 'wcs_updates']
       }
-      await supabase.from('contacts').update(updates).eq('id', found.id)
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('contacts').update(updates).eq('id', found.id)
+      }
     } else {
       const insertData = { email: normalizedEmail, name: trimmedName }
       if (optIn) insertData.tags = ['wcs_updates']

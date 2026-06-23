@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   const { data: guest, error } = await supabase
     .from('guests')
-    .select('id, rsvp_status, rsvp_at, dietary_notes, guest_count, contacts(name, email)')
+    .select('id, event_id, rsvp_status, rsvp_at, dietary_notes, guest_count, contacts(name, email)')
     .eq('invite_token', token)
     .single()
 
@@ -22,6 +22,7 @@ export default async function handler(req, res) {
   return res.status(200).json({
     valid: true,
     guestId: guest.id,
+    eventId: guest.event_id,
     rsvpStatus: guest.rsvp_status,
     rsvpAt: guest.rsvp_at,
     dietaryNotes: guest.dietary_notes,

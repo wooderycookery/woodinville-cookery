@@ -63,6 +63,13 @@ const STATUS_COLOR = {
 }
 const STATUS_ORDER = { attending: 0, maybe: 1, declined: 2, no_response: 3 }
 
+const NUMBER_WORDS = ['One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten',
+  'Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen','Twenty']
+function spellNumber(n) {
+  if (n >= 1 && n <= 20) return NUMBER_WORDS[n - 1]
+  return String(n)
+}
+
 const CONFIRMATION = {
   attending: { heading: () => "We'll set a place for you.",             sub: 'A note has been sent to your inbox.' },
   maybe:     { heading: () => 'We hope the evening finds you free.',    sub: 'A note has been sent to your inbox.' },
@@ -107,6 +114,7 @@ export default function EventLanding() {
   const [addGuestSending, setAddGuestSending] = useState(false)
   const [addGuestResult, setAddGuestResult] = useState(null)
   const [addGuestError, setAddGuestError]   = useState('')
+  const [removeConfirmId, setRemoveConfirmId] = useState(null)
 
   const [galleryOpening, setGalleryOpening] = useState(null)
   const [galleryOpenError, setGalleryOpenError] = useState('')
@@ -121,45 +129,90 @@ export default function EventLanding() {
 
   const activeToken = token || walkInToken
 
+  const [attendingCount, setAttendingCount] = useState(0)
+  const [attendingNames, setAttendingNames] = useState(null)
+
+  const fetchGuestList = useCallback(async (tokenToUse) => {
+    const params = new URLSearchParams({ eventId })
+    if (tokenToUse) params.set('token', tokenToUse)
+    try {
+      const res = await fetch(`/api/guest-list?${params}`)
+      if (!res.ok) return
+      const data = await res.json()
+      setAttendingCount(data.attendingCount || 0)
+      setAttendingNames(data.names || null)
+    } catch {}
+  }, [eventId])
+
   useEffect(() => {
     supabase
       .from('events')
-      .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, pre_gallery_open, post_gallery_open')
+      .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, pre_gallery_open, post_gallery_open, guest_list_reveal_date')
       .eq('id', eventId)
       .single()
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (error || !data) { setNotFound(true); setLoading(false); return }
         setEvent(data)
         setLoading(false)
-        supabase.auth.getUser().then(async ({ data: { user } }) => {
-          const eventData = data
-          if (user && user.id === eventData.host_id) {
-            setIsHost(true)
-            setHostUserId(user.id)
+        fetchGuestList(undefined)
 
-            const { data: guestsData } = await supabase
-              .from('guests')
-              .select('id, rsvp_status, dietary_notes, guest_count, contacts(name, email, phone)')
-              .eq('event_id', eventData.id)
-            setHostGuests(guestsData || [])
-
-            const { data: itemsData } = await supabase
-              .from('bring_list_items')
-              .select('id, category, label, slots_total')
-              .eq('event_id', eventData.id)
-              .order('created_at', { ascending: true })
-            setHostBringList(itemsData || [])
-
-            if (itemsData?.length) {
-              const { data: claimsData } = await supabase
-                .from('bring_list_claims')
-                .select('id, item_id, guest_id, guests(contacts(name, email))')
-                .in('item_id', itemsData.map(i => i.id))
-              setHostBringClaims(claimsData || [])
-            }
+        // Restore a previous walk-in session from localStorage when no token is in the URL.
+        // Runs before setAuthChecked so the walk-in form never flashes for returning guests.
+        if (!token) {
+          const storedToken = localStorage.getItem('wcs_guest_token')
+          if (storedToken) {
+            try {
+              const r = await fetch('/api/validate-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: storedToken }),
+              })
+              const tokenData = await r.json()
+              if (tokenData.valid && tokenData.eventId === eventId) {
+                setWalkInToken(storedToken)
+                fetchGuestList(storedToken)
+                setGuest(tokenData)
+                if (tokenData.rsvpStatus && tokenData.rsvpStatus !== 'no_response') {
+                  setSelectedStatus(tokenData.rsvpStatus)
+                  setDietaryNotes(tokenData.dietaryNotes || '')
+                  setGuestCount(tokenData.guestCount || 1)
+                  setSubmitted(true)
+                }
+              } else if (!tokenData.valid) {
+                localStorage.removeItem('wcs_guest_token')
+              }
+            } catch {}
           }
-          setAuthChecked(true)
-        })
+        }
+
+        const { data: { user } } = await supabase.auth.getUser()
+        const eventData = data
+        if (user && user.id === eventData.host_id) {
+          setIsHost(true)
+          setHostUserId(user.id)
+
+          const { data: guestsData } = await supabase
+            .from('guests')
+            .select('id, rsvp_status, dietary_notes, guest_count, contacts(name, email, phone)')
+            .eq('event_id', eventData.id)
+          setHostGuests(guestsData || [])
+
+          const { data: itemsData } = await supabase
+            .from('bring_list_items')
+            .select('id, category, label, slots_total')
+            .eq('event_id', eventData.id)
+            .order('created_at', { ascending: true })
+          setHostBringList(itemsData || [])
+
+          if (itemsData?.length) {
+            const { data: claimsData } = await supabase
+              .from('bring_list_claims')
+              .select('id, item_id, guest_id, guests(contacts(name, email))')
+              .in('item_id', itemsData.map(i => i.id))
+            setHostBringClaims(claimsData || [])
+          }
+        }
+        setAuthChecked(true)
       })
   }, [eventId])
 
@@ -175,6 +228,7 @@ export default function EventLanding() {
       dress_code:     event.dress_code || '',
       what_to_expect: event.what_to_expect || '',
       rsvp_deadline:  event.rsvp_deadline || '',
+      guest_list_reveal_date: event.guest_list_reveal_date || '',
     })
     setNewHeroImage(null)
     setHeroPreview(heroImageUrl || null)
@@ -230,9 +284,10 @@ export default function EventLanding() {
           dress_code:     editForm.dress_code || null,
           what_to_expect: editForm.what_to_expect || null,
           rsvp_deadline:  editForm.rsvp_deadline || null,
+          guest_list_reveal_date: editForm.guest_list_reveal_date || null,
         })
         .eq('id', event.id)
-        .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id')
+        .select('id, name, date, description, vibe, theme, dress_code, what_to_expect, rsvp_deadline, location, host_id, guest_list_reveal_date')
         .single()
       if (error) {
         console.error('Event update error:', error)
@@ -247,6 +302,19 @@ export default function EventLanding() {
       setSaving(false)
     }
   }
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`guests-count-${eventId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'guests',
+        filter: `event_id=eq.${eventId}`,
+      }, () => fetchGuestList(undefined))
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [eventId, fetchGuestList])
 
   useEffect(() => {
     if (!token) return
@@ -270,8 +338,8 @@ export default function EventLanding() {
         }
       })
       .catch(() => {})
-      .finally(() => setGuestLoading(false))
-  }, [token])
+      .finally(() => { setGuestLoading(false); fetchGuestList(token) })
+  }, [token, fetchGuestList])
 
   async function handleRsvpSubmit(e) {
     e.preventDefault()
@@ -356,6 +424,12 @@ export default function EventLanding() {
     }
   }
 
+  async function handleRemoveGuest(guestId) {
+    await supabase.from('guests').delete().eq('id', guestId)
+    setHostGuests(prev => prev.filter(g => g.id !== guestId))
+    setRemoveConfirmId(null)
+  }
+
   async function handleWalkInSubmit(e) {
     e.preventDefault()
     if (!selectedStatus || !walkInName.trim()) return
@@ -381,6 +455,7 @@ export default function EventLanding() {
       if (!res.ok) throw new Error(data.error || 'Failed to submit RSVP')
       setWalkInToken(data.token)
       localStorage.setItem('wcs_guest_token', data.token)
+      fetchGuestList(data.token)
       setGuest({
         valid: true,
         guestId: data.guestId,
@@ -560,6 +635,26 @@ export default function EventLanding() {
           </p>
         )}
 
+        {/* Attending count / names — non-host visitors only */}
+        {!isHost && attendingCount > 0 && (
+          <div style={{ textAlign: 'center', marginTop: 28 }}>
+            {attendingNames?.length > 0 ? (
+              <>
+                <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 10, fontFamily: 'Inter, system-ui' }}>
+                  Those joining the table
+                </p>
+                <p style={{ fontSize: 14, color: 'var(--wcs-green-mid)', lineHeight: 2, fontFamily: 'Inter, system-ui', margin: 0 }}>
+                  {attendingNames.join(' · ')}
+                </p>
+              </>
+            ) : (
+              <p className="font-serif" style={{ fontSize: 16, color: 'var(--wcs-green-light)', fontStyle: 'italic', margin: 0 }}>
+                {spellNumber(attendingCount)} {attendingCount === 1 ? 'has' : 'have'} saved their seat.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* RSVP section */}
         <div style={{ marginTop: 32 }}>
           {guestLoading ? (
@@ -717,34 +812,66 @@ export default function EventLanding() {
                     </div>
                     {sorted.length === 0 ? (
                       <p style={{ textAlign: 'center', padding: '20px 16px', fontSize: 13, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: 0 }}>No guests with this status.</p>
-                    ) : sorted.map((g, i) => (
-                      <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderTop: i > 0 ? '0.5px solid var(--wcs-cream-dark)' : 'none', background: i % 2 === 0 ? 'var(--wcs-white)' : 'var(--wcs-cream-mid)' }}>
-                        <div>
-                          <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)', fontWeight: 500 }}>
-                            {g.contacts?.name || g.contacts?.email || g.contacts?.phone}
-                          </span>
-                          {g.contacts?.name && g.contacts?.email && (
-                            <span style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginLeft: 8 }}>{g.contacts.email}</span>
-                          )}
-                          {g.contacts?.phone && !g.contacts?.email && (
-                            <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-copper)', background: '#f5ede5', padding: '2px 6px', borderRadius: 3, marginLeft: 8, fontFamily: 'Inter, system-ui' }}>SMS</span>
-                          )}
-                          {g.dietary_notes && (
-                            <p style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>Note: {g.dietary_notes}</p>
-                          )}
+                    ) : sorted.map((g, i) => {
+                      const rowName = g.contacts?.name || g.contacts?.email || g.contacts?.phone || 'this guest'
+                      const rowBase = { borderTop: i > 0 ? '0.5px solid var(--wcs-cream-dark)' : 'none', background: i % 2 === 0 ? 'var(--wcs-white)' : 'var(--wcs-cream-mid)' }
+                      if (removeConfirmId === g.id) {
+                        return (
+                          <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', ...rowBase, background: '#fff5f5' }}>
+                            <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: '#b91c1c' }}>
+                              Remove {rowName} from this event?
+                            </span>
+                            <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                              <button onClick={() => handleRemoveGuest(g.id)} style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#b91c1c', background: 'none', border: '1px solid #b91c1c', borderRadius: 4, padding: '5px 12px', cursor: 'pointer', fontFamily: 'Inter, system-ui' }}>
+                                Remove
+                              </button>
+                              <button onClick={() => setRemoveConfirmId(null)} style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', background: 'none', border: '1px solid var(--wcs-cream-dark)', borderRadius: 4, padding: '5px 12px', cursor: 'pointer', fontFamily: 'Inter, system-ui' }}>
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      }
+                      return (
+                        <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', ...rowBase }}>
+                          <div>
+                            <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)', fontWeight: 500 }}>
+                              {rowName}
+                            </span>
+                            {g.contacts?.name && g.contacts?.email && (
+                              <span style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginLeft: 8 }}>{g.contacts.email}</span>
+                            )}
+                            {g.contacts?.phone && !g.contacts?.email && (
+                              <span style={{ fontSize: 9, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--wcs-copper)', background: '#f5ede5', padding: '2px 6px', borderRadius: 3, marginLeft: 8, fontFamily: 'Inter, system-ui' }}>SMS</span>
+                            )}
+                            {g.dietary_notes && (
+                              <p style={{ fontSize: 11, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>Note: {g.dietary_notes}</p>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, marginLeft: 12 }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATUS_COLOR[g.rsvp_status || 'no_response'], fontFamily: 'Inter, system-ui' }}>
+                                {STATUS_LABEL[g.rsvp_status || 'no_response']}
+                              </span>
+                              {(g.rsvp_status === 'attending' || g.rsvp_status === 'maybe') && (g.guest_count || 1) > 0 && (
+                                <p style={{ fontSize: 10, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>
+                                  {g.guest_count || 1} {(g.guest_count || 1) === 1 ? 'guest' : 'guests'}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => setRemoveConfirmId(g.id)}
+                              title={`Remove ${rowName} from this event`}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--wcs-green-muted)', lineHeight: 0, borderRadius: 4, flexShrink: 0 }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1.75 3.5h10.5M5.25 3.5V2.333A.583.583 0 0 1 5.833 1.75h2.334A.583.583 0 0 1 8.75 2.333V3.5m-5.833 0 .583 8.167a.583.583 0 0 0 .583.583h5.834a.583.583 0 0 0 .583-.583L11.083 3.5H2.917Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                          <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase', color: STATUS_COLOR[g.rsvp_status || 'no_response'], fontFamily: 'Inter, system-ui' }}>
-                            {STATUS_LABEL[g.rsvp_status || 'no_response']}
-                          </span>
-                          {(g.rsvp_status === 'attending' || g.rsvp_status === 'maybe') && (g.guest_count || 1) > 0 && (
-                            <p style={{ fontSize: 10, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', margin: '2px 0 0' }}>
-                              {g.guest_count || 1} {(g.guest_count || 1) === 1 ? 'guest' : 'guests'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )
@@ -920,6 +1047,10 @@ export default function EventLanding() {
                 <div>
                   <label style={editLabelStyle}>RSVP deadline</label>
                   <input type="date" value={editForm.rsvp_deadline} onChange={e => setEditForm(p => ({ ...p, rsvp_deadline: e.target.value }))} style={editInputStyle} />
+                </div>
+                <div>
+                  <label style={editLabelStyle}>Guest list reveal date</label>
+                  <input type="date" value={editForm.guest_list_reveal_date || ''} onChange={e => setEditForm(p => ({ ...p, guest_list_reveal_date: e.target.value }))} style={editInputStyle} />
                 </div>
                 <div>
                   <label style={editLabelStyle}>Location / address</label>

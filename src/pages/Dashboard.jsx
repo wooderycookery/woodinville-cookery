@@ -66,7 +66,7 @@ export default function Dashboard() {
 
       const { data: eventsData } = await supabase
         .from('events')
-        .select('id, name, date, save_the_date_sent_at, theme, dress_code, what_to_expect, rsvp_deadline, location')
+        .select('id, name, date, save_the_date_sent_at, theme, dress_code, what_to_expect, rsvp_deadline, location, start_time, all_day, multi_day_end, end_line, details')
         .eq('host_id', user.id)
         .eq('archived', false)
 
@@ -158,6 +158,11 @@ export default function Dashboard() {
       what_to_expect: event.what_to_expect || '',
       rsvp_deadline:  event.rsvp_deadline || '',
       location:       event.location || '',
+      all_day:        event.all_day || false,
+      start_time:     event.start_time ? new Date(event.start_time).toISOString().slice(0, 16) : '',
+      multi_day_end:  event.multi_day_end || '',
+      end_line:       event.end_line || '',
+      details:        event.details || '',
     })
     setEditingDetails(true)
   }
@@ -174,9 +179,14 @@ export default function Dashboard() {
         what_to_expect: detailsForm.what_to_expect || null,
         rsvp_deadline:  detailsForm.rsvp_deadline || null,
         location:       detailsForm.location || null,
+        all_day:        detailsForm.all_day || false,
+        start_time:     detailsForm.start_time || null,
+        multi_day_end:  detailsForm.multi_day_end || null,
+        end_line:       detailsForm.end_line || null,
+        details:        detailsForm.details || null,
       })
       .eq('id', activeEvent.id)
-      .select('id, name, date, save_the_date_sent_at, theme, dress_code, what_to_expect, rsvp_deadline, location')
+      .select('id, name, date, save_the_date_sent_at, theme, dress_code, what_to_expect, rsvp_deadline, location, start_time, all_day, multi_day_end, end_line, details')
       .single()
 
     if (updated) {
@@ -347,6 +357,33 @@ export default function Dashboard() {
                       style={{ ...inputStyle, resize: 'vertical' }}
                     />
                   </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input type="checkbox" id="all_day" checked={detailsForm.all_day} onChange={e => setDetailsForm(p => ({ ...p, all_day: e.target.checked }))} style={{ accentColor: 'var(--wcs-green-dark)', flexShrink: 0 }} />
+                    <label htmlFor="all_day" style={{ ...labelStyle, margin: 0, cursor: 'pointer' }}>All day</label>
+                  </div>
+
+                  {!detailsForm.all_day && (
+                    <div>
+                      <label style={{ ...labelStyle, display: 'block', marginBottom: 4 }}>Start time</label>
+                      <input type="datetime-local" value={detailsForm.start_time} onChange={e => setDetailsForm(p => ({ ...p, start_time: e.target.value }))} style={inputStyle} />
+                    </div>
+                  )}
+
+                  <div>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: 4 }}>Multi-day end date</label>
+                    <input type="date" value={detailsForm.multi_day_end} onChange={e => setDetailsForm(p => ({ ...p, multi_day_end: e.target.value }))} style={inputStyle} />
+                  </div>
+
+                  <div>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: 4 }}>End line</label>
+                    <input type="text" value={detailsForm.end_line} onChange={e => setDetailsForm(p => ({ ...p, end_line: e.target.value }))} placeholder="until the last bottle is empty" style={inputStyle} />
+                  </div>
+
+                  <div>
+                    <label style={{ ...labelStyle, display: 'block', marginBottom: 4 }}>Details</label>
+                    <textarea value={detailsForm.details} onChange={e => setDetailsForm(p => ({ ...p, details: e.target.value }))} placeholder="Menu, activities, dress code — anything guests should know" rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button type="submit" disabled={savingDetails} style={{ ...primaryBtnStyle, padding: '10px 24px' }}>
                       {savingDetails ? 'Saving…' : 'Save'}

@@ -26,9 +26,10 @@ const CopperRule = () => (
 
 export default function History() {
   const navigate = useNavigate()
-  const [upcoming, setUpcoming] = useState([])
-  const [past, setPast]         = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [upcoming, setUpcoming]   = useState([])
+  const [past, setPast]           = useState([])
+  const [archived, setArchived]   = useState([])
+  const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
     async function load() {
@@ -37,32 +38,39 @@ export default function History() {
 
       const { data: events } = await supabase
         .from('events')
-        .select('id, name, date, vibe, pre_gallery_open, post_gallery_open')
+        .select('id, name, date, vibe, pre_gallery_open, post_gallery_open, archived')
         .eq('host_id', user.id)
         .order('date', { ascending: false })
 
-      if (!events?.length) { setLoading(false); return }
+      if (events?.length) {
+        const { data: guestRows } = await supabase
+          .from('guests')
+          .select('event_id, rsvp_status')
+          .in('event_id', events.map(e => e.id))
 
-      // Fetch guest counts for each event
-      const { data: guestRows } = await supabase
-        .from('guests')
-        .select('event_id, rsvp_status')
-        .in('event_id', events.map(e => e.id))
+        const countsByEvent = {}
+        for (const g of guestRows || []) {
+          if (!countsByEvent[g.event_id]) countsByEvent[g.event_id] = { attending: 0, total: 0 }
+          countsByEvent[g.event_id].total++
+          if (g.rsvp_status === 'attending') countsByEvent[g.event_id].attending++
+        }
 
-      const countsByEvent = {}
-      for (const g of guestRows || []) {
-        if (!countsByEvent[g.event_id]) countsByEvent[g.event_id] = { attending: 0, total: 0 }
-        countsByEvent[g.event_id].total++
-        if (g.rsvp_status === 'attending') countsByEvent[g.event_id].attending++
+        const enriched = events.map(e => ({ ...e, counts: countsByEvent[e.id] || { attending: 0, total: 0 } }))
+        const active = enriched.filter(e => !e.archived)
+        setUpcoming(active.filter(e => !isPast(e.date)).reverse())
+        setPast(active.filter(e => isPast(e.date)))
+        setArchived(enriched.filter(e => e.archived))
       }
 
-      const enriched = events.map(e => ({ ...e, counts: countsByEvent[e.id] || { attending: 0, total: 0 } }))
-      setUpcoming(enriched.filter(e => !isPast(e.date)).reverse())
-      setPast(enriched.filter(e => isPast(e.date)))
       setLoading(false)
     }
     load()
   }, [navigate])
+
+  async function handleUnarchive(eventId) {
+    const { error } = await supabase.from('events').update({ archived: false }).eq('id', eventId)
+    if (!error) setArchived(prev => prev.filter(e => e.id !== eventId))
+  }
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--wcs-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -91,7 +99,7 @@ export default function History() {
           </Link>
         </div>
 
-        {upcoming.length === 0 && past.length === 0 && (
+        {upcoming.length === 0 && past.length === 0 && archived.length === 0 && (
           <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', lineHeight: 1.7 }}>
             Your history with the Woodinville Cookery Society begins with your first event.
           </p>
@@ -109,7 +117,7 @@ export default function History() {
         )}
 
         {past.length > 0 && (
-          <section>
+          <section style={{ marginBottom: archived.length > 0 ? 44 : 0 }}>
             <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginBottom: 14 }}>
               What we've shared
             </p>
@@ -119,12 +127,25 @@ export default function History() {
           </section>
         )}
 
+        {archived.length > 0 && (
+          <section>
+            <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginBottom: 14 }}>
+              Shelved
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {archived.map(event => (
+                <HostEventCard key={event.id} event={event} dimmed onUnarchive={() => handleUnarchive(event.id)} />
+              ))}
+            </div>
+          </section>
+        )}
+
       </div>
     </div>
   )
 }
 
-function HostEventCard({ event, dimmed }) {
+function HostEventCard({ event, dimmed, onUnarchive }) {
   const { heroImageUrl } = parseVibe(event.vibe)
   const hasGallery = event.pre_gallery_open || event.post_gallery_open
   const attendingCount = event.counts?.attending || 0
@@ -158,7 +179,7 @@ function HostEventCard({ event, dimmed }) {
           </span>
         </div>
       </Link>
-      {hasGallery && (
+      {(hasGallery || onUnarchive) && (
         <div style={{ padding: '0 20px 14px', display: 'flex', gap: 14 }}>
           {event.pre_gallery_open && (
             <Link to={`/gallery/${event.id}/pre`} style={{ fontSize: 11, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', letterSpacing: '0.06em', textDecoration: 'none' }}>
@@ -169,6 +190,14 @@ function HostEventCard({ event, dimmed }) {
             <Link to={`/gallery/${event.id}/post`} style={{ fontSize: 11, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', letterSpacing: '0.06em', textDecoration: 'none' }}>
               What we remember →
             </Link>
+          )}
+          {onUnarchive && (
+            <button
+              onClick={onUnarchive}
+              style={{ fontSize: 11, color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', padding: 0, letterSpacing: '0.06em' }}
+            >
+              Restore to dashboard
+            </button>
           )}
         </div>
       )}

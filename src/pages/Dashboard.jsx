@@ -10,6 +10,18 @@ function daysUntil(dateStr) {
   return diff > 0 ? diff : null
 }
 
+function sortEvents(events) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const upcoming = events
+    .filter(e => new Date(e.date + 'T12:00:00') >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const past = events
+    .filter(e => new Date(e.date + 'T12:00:00') < today)
+    .sort((a, b) => b.date.localeCompare(a.date))
+  return [...upcoming, ...past]
+}
+
 function formatEventDateLabel(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {
@@ -39,6 +51,8 @@ export default function Dashboard() {
   const [editingDetails, setEditingDetails] = useState(false)
   const [detailsForm, setDetailsForm]       = useState({})
   const [savingDetails, setSavingDetails]   = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [deletingId, setDeletingId]           = useState(null)
 
   useEffect(() => {
     async function init() {
@@ -54,12 +68,13 @@ export default function Dashboard() {
         .from('events')
         .select('id, name, date, save_the_date_sent_at, theme, dress_code, what_to_expect, rsvp_deadline, location')
         .eq('host_id', user.id)
-        .order('date', { ascending: true })
+        .eq('archived', false)
 
       if (eventsData?.length) {
-        setEvents(eventsData)
-        setExpandedEvent(eventsData[0].id)
-        setSelectedEventId(eventsData[0].id)
+        const sorted = sortEvents(eventsData)
+        setEvents(sorted)
+        setExpandedEvent(sorted[0].id)
+        setSelectedEventId(sorted[0].id)
 
         const eventIds = eventsData.map(e => e.id)
 
@@ -169,6 +184,48 @@ export default function Dashboard() {
     }
     setSavingDetails(false)
     setEditingDetails(false)
+  }
+
+  async function handleArchive(eventId) {
+    await supabase.from('events').update({ archived: true }).eq('id', eventId)
+    const remaining = events.filter(e => e.id !== eventId)
+    setEvents(remaining)
+    if (selectedEventId === eventId) {
+      if (remaining[0]) {
+        setSelectedEventId(remaining[0].id)
+        setExpandedEvent(remaining[0].id)
+        await loadBringList(remaining[0].id)
+      } else {
+        setSelectedEventId(null)
+        setExpandedEvent(null)
+      }
+    }
+  }
+
+  async function handleDelete(eventId) {
+    setDeletingId(eventId)
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/delete-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+      body: JSON.stringify({ eventId }),
+    })
+    if (res.ok) {
+      const remaining = events.filter(e => e.id !== eventId)
+      setEvents(remaining)
+      if (selectedEventId === eventId) {
+        if (remaining[0]) {
+          setSelectedEventId(remaining[0].id)
+          setExpandedEvent(remaining[0].id)
+          await loadBringList(remaining[0].id)
+        } else {
+          setSelectedEventId(null)
+          setExpandedEvent(null)
+        }
+      }
+      setConfirmDeleteId(null)
+    }
+    setDeletingId(null)
   }
 
   function counts(guests = []) {
@@ -432,15 +489,50 @@ export default function Dashboard() {
                         <polyline points="6 9 12 15 18 9" />
                       </svg>
                     </button>
-                    <Link
-                      to={`/event/${event.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{ fontSize: 11, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'none', flexShrink: 0 }}
-                    >
-                      See the details
-                    </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+                      <Link
+                        to={`/event/${event.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: 11, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'none' }}
+                      >
+                        See the details
+                      </Link>
+                      <button
+                        onClick={() => handleArchive(event.id)}
+                        style={{ fontSize: 11, color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', padding: 0 }}
+                      >
+                        Archive
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(confirmDeleteId === event.id ? null : event.id)}
+                        style={{ fontSize: 11, color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', padding: 0 }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
+
+                  {confirmDeleteId === event.id && (
+                    <div style={{ borderTop: '1px solid var(--wcs-cream-dark)', padding: '10px 20px', display: 'flex', gap: 16, alignItems: 'center', background: '#fef9f6' }}>
+                      <span style={{ fontSize: 12, color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui' }}>
+                        This will permanently remove the event and all guest records.
+                      </span>
+                      <button
+                        onClick={() => handleDelete(event.id)}
+                        disabled={deletingId === event.id}
+                        style={{ fontSize: 12, color: '#b91c1c', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', padding: 0, fontWeight: 500 }}
+                      >
+                        {deletingId === event.id ? 'Deleting…' : 'Delete permanently'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        style={{ fontSize: 12, color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', padding: 0 }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
 
                   {isExpanded && guests.length > 0 && (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

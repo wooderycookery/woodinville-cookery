@@ -1011,10 +1011,16 @@ export default function EventLanding() {
         )}
 
         {/* Footer */}
-        <div style={{ borderTop: '1px solid var(--wcs-cream-dark)', marginTop: 48, paddingTop: 20 }}>
-          <p className="text-center" style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)' }}>
+        <div style={{ borderTop: '1px solid var(--wcs-cream-dark)', marginTop: 48, paddingTop: 20, textAlign: 'center' }}>
+          <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 10 }}>
             Woodinville Cookery Society · woodinvillecookery.com
           </p>
+          <Link
+            to="/ideas"
+            style={{ fontSize: 12, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', textDecoration: 'none', lineHeight: 1.6 }}
+          >
+            Have an idea for a future gathering?
+          </Link>
         </div>
 
       </div>

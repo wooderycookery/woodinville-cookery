@@ -6,6 +6,7 @@ import EventLanding from './pages/EventLanding'
 import GuestDashboard from './pages/GuestDashboard'
 import Gallery from './pages/Gallery'
 import History from './pages/History'
+import IdeasBoard from './pages/IdeasBoard'
 import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/event/:eventId" element={<EventLanding />} />
         <Route path="/my-invitations" element={<GuestDashboard />} />
+        <Route path="/ideas" element={<IdeasBoard />} />
         <Route path="/gallery/:eventId/:type" element={<Gallery />} />
         <Route
           path="/history"

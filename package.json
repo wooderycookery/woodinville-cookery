@@ -10,6 +10,7 @@
     "email:dev": "email dev --dir src/emails"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",
     "@supabase/supabase-js": "^2.49.4",

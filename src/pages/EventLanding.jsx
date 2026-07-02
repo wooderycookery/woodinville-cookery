@@ -597,7 +597,7 @@ export default function EventLanding() {
               >
                 Edit
               </button>
-              <Link to="/dashboard" style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-copper)', textDecoration: 'none', fontFamily: 'Inter, system-ui' }}>
+              <Link to="/dashboard" style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-copper)', textDecoration: 'underline', fontFamily: 'Inter, system-ui' }}>
                 ← Dashboard
               </Link>
             </div>
@@ -630,20 +630,20 @@ export default function EventLanding() {
         </h1>
 
         {/* 3. Who / When / Where */}
-        <div style={{ textAlign: 'center', marginTop: 16 }}>
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
           {hostNames && (
-            <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 6 }}>Hosted by {hostNames}</p>
+            <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 3 }}>Hosted by {hostNames}</p>
           )}
-          <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 4, fontFamily: 'Inter, system-ui' }}>
+          <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 3, fontFamily: 'Inter, system-ui', letterSpacing: '0.02em' }}>
             {dateLabel}
-            {startTime && <span style={{ marginLeft: 10 }}>· {endTime ? `${startTime} – ${endTime}` : `${startTime} — ${endLine}`}</span>}
+            {startTime && <span style={{ marginLeft: 8 }}>· {endTime ? `${startTime} – ${endTime}` : `${startTime} — ${endLine}`}</span>}
           </p>
           {event.location && (
             <a
               href={mapsUrl}
               target="_blank"
               rel="noreferrer"
-              style={{ fontSize: 13, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'none', display: 'inline-block' }}
+              style={{ fontSize: 13, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'underline', display: 'inline-block' }}
             >
               {event.location}
             </a>
@@ -936,7 +936,10 @@ export default function EventLanding() {
         {/* Footer */}
         <div style={{ borderTop: '1px solid var(--wcs-cream-dark)', marginTop: 48, paddingTop: 20, textAlign: 'center' }}>
           <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 10 }}>
-            Woodinville Cookery Society · woodinvillecookery.com
+            Woodinville Cookery Society ·{' '}
+            <a href="https://woodinvillecookery.com" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+              woodinvillecookery.com
+            </a>
           </p>
           <Link to="/ideas" style={{ fontSize: 12, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', textDecoration: 'none', lineHeight: 1.6 }}>
             Have an idea for a future gathering?

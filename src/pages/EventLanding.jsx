@@ -620,19 +620,19 @@ export default function EventLanding() {
 
         {/* 3. Who / When / Where */}
         <div style={{ textAlign: 'center', marginTop: 16 }}>
+          {hostNames && (
+            <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 6 }}>Hosted by {hostNames}</p>
+          )}
           <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 4, fontFamily: 'Inter, system-ui' }}>
             {dateLabel}
             {startTime && <span style={{ marginLeft: 10 }}>· {endTime ? `${startTime} – ${endTime}` : `${startTime} — ${endLine}`}</span>}
           </p>
-          {hostNames && (
-            <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginTop: 10, marginBottom: 6 }}>Hosted by {hostNames}</p>
-          )}
           {event.location && (
             <a
               href={mapsUrl}
               target="_blank"
               rel="noreferrer"
-              style={{ fontSize: 13, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'none', display: 'inline-block', marginTop: hostNames ? 0 : 10 }}
+              style={{ fontSize: 13, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', textDecoration: 'none', display: 'inline-block' }}
             >
               {event.location}
             </a>

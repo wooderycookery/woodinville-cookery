@@ -756,28 +756,6 @@ export default function EventLanding() {
           </div>
         )}
 
-        {/* 6. Galleries */}
-        {showGalleries && (
-          <div style={{ marginTop: 44 }}>
-            <div style={{ width: 40, height: 1, background: 'var(--wcs-copper)', margin: '0 auto 24px' }} />
-            <p style={{ textAlign: 'center', fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 14, fontFamily: 'Inter, system-ui' }}>
-              Photographs
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <GalleryCard
-                label="Before the evening"
-                open={event.pre_gallery_open}
-                href={`/gallery/${eventId}/pre${activeToken ? `?token=${activeToken}` : ''}`}
-              />
-              <GalleryCard
-                label="After the evening"
-                open={event.post_gallery_open}
-                href={`/gallery/${eventId}/post${activeToken ? `?token=${activeToken}` : ''}`}
-              />
-            </div>
-          </div>
-        )}
-
         {/* 7. Guest list */}
         {isHost && (
           <div style={{ marginTop: 44 }}>
@@ -985,10 +963,6 @@ export default function EventLanding() {
                   <input type="text" value={editForm.event_type || ''} onChange={e => setEditForm(p => ({ ...p, event_type: e.target.value }))} placeholder="Leave blank to hide" style={editInputStyle} />
                 </div>
                 <div>
-                  <label style={editLabelStyle}>Date</label>
-                  <input type="date" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))} style={editInputStyle} />
-                </div>
-                <div>
                   <label style={editLabelStyle}>RSVP deadline</label>
                   <input type="date" value={editForm.rsvp_deadline} onChange={e => setEditForm(p => ({ ...p, rsvp_deadline: e.target.value }))} style={editInputStyle} />
                 </div>
@@ -1040,29 +1014,34 @@ export default function EventLanding() {
                 <label htmlFor="all_day" style={{ ...editLabelStyle, margin: 0, cursor: 'pointer' }}>All day</label>
               </div>
 
-              {!editForm.all_day && (
-                <div style={{ border: '1px solid var(--wcs-cream-dark)', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div>
-                    <label style={editLabelStyle}>Start time</label>
-                    <input type="datetime-local" value={editForm.start_time} onChange={e => setEditForm(p => ({ ...p, start_time: e.target.value }))} style={editInputStyle} />
-                  </div>
-                  <div>
-                    <label style={editLabelStyle}>
-                      End time
-                      <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--wcs-green-muted)', marginLeft: 8 }}>leave blank for open-ended events</span>
-                    </label>
-                    <input type="datetime-local" value={editForm.end_time} onChange={e => setEditForm(p => ({ ...p, end_time: e.target.value }))} style={editInputStyle} />
-                  </div>
-                  <div>
-                    <label style={editLabelStyle}>Closing line</label>
-                    <input type="text" value={editForm.end_line} onChange={e => setEditForm(p => ({ ...p, end_line: e.target.value }))} placeholder="until the last bottle is empty" style={editInputStyle} />
-                  </div>
+              <div style={{ border: '1px solid var(--wcs-cream-dark)', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={editLabelStyle}>Date</label>
+                  <input type="date" value={editForm.date} onChange={e => setEditForm(p => ({ ...p, date: e.target.value }))} style={editInputStyle} />
                 </div>
-              )}
-
-              <div>
-                <label style={editLabelStyle}>Multi-day end date</label>
-                <input type="date" value={editForm.multi_day_end} onChange={e => setEditForm(p => ({ ...p, multi_day_end: e.target.value }))} style={editInputStyle} />
+                {!editForm.all_day && (
+                  <>
+                    <div>
+                      <label style={editLabelStyle}>Start time</label>
+                      <input type="datetime-local" value={editForm.start_time} onChange={e => setEditForm(p => ({ ...p, start_time: e.target.value }))} style={editInputStyle} />
+                    </div>
+                    <div>
+                      <label style={editLabelStyle}>
+                        End time
+                        <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--wcs-green-muted)', marginLeft: 8 }}>leave blank for open-ended events</span>
+                      </label>
+                      <input type="datetime-local" value={editForm.end_time} onChange={e => setEditForm(p => ({ ...p, end_time: e.target.value }))} style={editInputStyle} />
+                    </div>
+                    <div>
+                      <label style={editLabelStyle}>Closing line</label>
+                      <input type="text" value={editForm.end_line} onChange={e => setEditForm(p => ({ ...p, end_line: e.target.value }))} placeholder="until the last bottle is empty" style={editInputStyle} />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label style={editLabelStyle}>Multi-day end date</label>
+                  <input type="date" value={editForm.multi_day_end} onChange={e => setEditForm(p => ({ ...p, multi_day_end: e.target.value }))} style={editInputStyle} />
+                </div>
               </div>
 
               <div>

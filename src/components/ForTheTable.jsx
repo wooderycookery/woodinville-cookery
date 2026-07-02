@@ -144,7 +144,6 @@ export default function ForTheTable({ eventId, isHost, hostUserId, guestToken, g
               From the guests
             </p>
             <div>
-          <div>
             {guestItems.map((c, i) => {
               const isOwn = !isHost && c.rsvp_id === guestRsvpId
               const canDelete = isHost || isOwn

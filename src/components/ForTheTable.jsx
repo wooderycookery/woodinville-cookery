@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 
-const CATEGORIES = ['Mains', 'Sides', 'Drinks', 'Dessert', 'Other']
+const CATEGORIES = ['Mains', 'Beverage', 'Sides', 'Dessert', 'Entertainment', 'Diversions']
 
 export default function ForTheTable({ eventId, isHost, hostUserId, guestToken, guestRsvpId }) {
   const [contributions, setContributions] = useState([])

@@ -30,8 +30,12 @@ export default async function handler(req, res) {
     preferences ? `Guest preference: ${preferences}` : '',
   ].filter(Boolean).join('\n')
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(500).json({ error: 'AI assist is not configured on this server.' })
+  }
+
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    const client = new Anthropic()
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 256,

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import FromTheTable from '../components/FromTheTable'
+import ForTheTable from '../components/ForTheTable'
 
 const EVENT_TIMEZONE = 'America/Los_Angeles'
 
@@ -166,6 +167,12 @@ export default function EventLanding() {
   const [galleryOpening, setGalleryOpening]   = useState(null)
   const [galleryOpenError, setGalleryOpenError] = useState('')
 
+  const [hostContributions, setHostContributions]     = useState([])
+  const [newHostItem, setNewHostItem]                 = useState('')
+  const [addingHostItem, setAddingHostItem]           = useState(false)
+  const [hostItemError, setHostItemError]             = useState('')
+  const [forTheTableKey, setForTheTableKey]           = useState(0)
+
   const [blastSubject, setBlastSubject] = useState('')
   const [blastNote, setBlastNote]       = useState('')
   const [blastConfirm, setBlastConfirm] = useState(false)
@@ -292,6 +299,10 @@ export default function EventLanding() {
     setHeroPreview(heroImageUrl || null)
     setImageError('')
     setSaveError('')
+    fetch(`/api/get-table-contributions?eventId=${event.id}`)
+      .then(r => r.json())
+      .then(d => setHostContributions((d.contributions || []).filter(c => c.is_host_provided)))
+      .catch(() => {})
     setEditMode(true)
   }
 
@@ -743,11 +754,16 @@ export default function EventLanding() {
           </div>
         )}
 
-        {/* 5. Bring list (for confirmed guests) */}
-        {isConfirmedGuest && (
-          <div style={{ marginTop: 32 }}>
-            <BringListGuest eventId={eventId} guestId={guest.guestId} token={activeToken} />
-          </div>
+        {/* 5. For the Table */}
+        {(isHost || isConfirmedGuest) && (
+          <ForTheTable
+            key={forTheTableKey}
+            eventId={eventId}
+            isHost={isHost}
+            hostUserId={hostUserId}
+            guestToken={activeToken}
+            guestRsvpId={guest?.guestId}
+          />
         )}
 
         {/* 7. Guest list */}
@@ -1092,6 +1108,79 @@ export default function EventLanding() {
                 ))}
               </div>
               {galleryOpenError && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 8, fontFamily: 'Inter, system-ui' }}>{galleryOpenError}</p>}
+            </div>
+
+            {/* ─── For the Table — host items ─── */}
+            <div style={{ marginTop: 28, paddingTop: 28, borderTop: '1px solid var(--wcs-cream-dark)' }}>
+              <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', marginBottom: 12 }}>
+                For the Table — provided by hosts
+              </p>
+              {hostContributions.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  {hostContributions.map((c, i) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < hostContributions.length - 1 ? '0.5px solid var(--wcs-cream-dark)' : 'none' }}>
+                      <span style={{ fontSize: 13, fontFamily: 'Inter, system-ui', color: 'var(--wcs-green-dark)' }}>{c.item}</span>
+                      <button
+                        onClick={async () => {
+                          await fetch('/api/delete-table-contribution', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contributionId: c.id, authorId: hostUserId, eventId }),
+                          })
+                          setHostContributions(prev => prev.filter(x => x.id !== c.id))
+                          setForTheTableKey(k => k + 1)
+                        }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--wcs-green-muted)', lineHeight: 0, flexShrink: 0, marginLeft: 12 }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M1.75 3.5h10.5M5.25 3.5V2.333A.583.583 0 0 1 5.833 1.75h2.334A.583.583 0 0 1 8.75 2.333V3.5m-5.833 0 .583 8.167a.583.583 0 0 0 .583.583h5.834a.583.583 0 0 0 .583-.583L11.083 3.5H2.917Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <form
+                onSubmit={async e => {
+                  e.preventDefault()
+                  if (!newHostItem.trim()) return
+                  setAddingHostItem(true)
+                  setHostItemError('')
+                  try {
+                    const res = await fetch('/api/add-table-contribution', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ eventId, item: newHostItem.trim(), authorId: hostUserId, isHostProvided: true }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok) throw new Error(data.error || 'Could not add item')
+                    setHostContributions(prev => [...prev, data.contribution])
+                    setNewHostItem('')
+                    setForTheTableKey(k => k + 1)
+                  } catch (err) {
+                    setHostItemError(err.message)
+                  } finally {
+                    setAddingHostItem(false)
+                  }
+                }}
+                style={{ display: 'flex', gap: 8 }}
+              >
+                <input
+                  type="text"
+                  value={newHostItem}
+                  onChange={e => { setNewHostItem(e.target.value); setHostItemError('') }}
+                  placeholder="Whole roasted pig, Bar setup..."
+                  style={{ flex: 1, padding: '9px 12px', border: '1px solid var(--wcs-cream-dark)', borderRadius: 6, background: 'var(--wcs-white)', fontFamily: 'Inter, system-ui', fontSize: 14, color: 'var(--wcs-green-dark)', outline: 'none' }}
+                />
+                <button
+                  type="submit"
+                  disabled={!newHostItem.trim() || addingHostItem}
+                  style={{ padding: '9px 16px', background: newHostItem.trim() && !addingHostItem ? 'var(--wcs-green-dark)' : 'var(--wcs-cream-dark)', color: 'var(--wcs-cream)', border: 'none', borderRadius: 6, fontFamily: 'Inter, system-ui', fontSize: 11, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: newHostItem.trim() && !addingHostItem ? 'pointer' : 'not-allowed', flexShrink: 0 }}
+                >
+                  {addingHostItem ? '…' : 'Add'}
+                </button>
+              </form>
+              {hostItemError && <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 6, fontFamily: 'Inter, system-ui' }}>{hostItemError}</p>}
             </div>
 
             {/* ─── Add guests ─── */}

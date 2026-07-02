@@ -31,11 +31,7 @@ export default async function handler(req, res) {
   ].filter(Boolean).join('\n')
 
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    const present = 'ANTHROPIC_API_KEY' in process.env
-    const val = process.env.ANTHROPIC_API_KEY === undefined ? 'undefined' : process.env.ANTHROPIC_API_KEY === '' ? 'empty_string' : 'set_but_falsy'
-    return res.status(500).json({ error: `key_present=${present} key_val=${val}` })
-  }
+  if (!apiKey) return res.status(500).json({ error: 'AI assist is not configured.' })
 
   try {
     const client = new Anthropic({ apiKey })

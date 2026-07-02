@@ -32,11 +32,9 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return res.status(500).json({
-      error: 'ANTHROPIC_API_KEY not set or empty in this function environment',
-      keyPresent: 'ANTHROPIC_API_KEY' in process.env,
-      keyValue: process.env.ANTHROPIC_API_KEY === undefined ? 'undefined' : process.env.ANTHROPIC_API_KEY === '' ? 'empty_string' : 'set_but_falsy',
-    })
+    const present = 'ANTHROPIC_API_KEY' in process.env
+    const val = process.env.ANTHROPIC_API_KEY === undefined ? 'undefined' : process.env.ANTHROPIC_API_KEY === '' ? 'empty_string' : 'set_but_falsy'
+    return res.status(500).json({ error: `key_present=${present} key_val=${val}` })
   }
 
   try {

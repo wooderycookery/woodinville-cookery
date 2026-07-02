@@ -47,6 +47,7 @@ export default async function handler(req, res) {
       mime_type: mimeType || null,
       caption: caption || null,
       author_name: resolvedAuthorName,
+      author_token: token || null,
     })
     .select()
     .single()
@@ -57,5 +58,7 @@ export default async function handler(req, res) {
     .from('event-images')
     .getPublicUrl(storagePath)
 
-  return res.status(200).json({ photo: { ...photo, url: publicUrl } })
+  // Never return author_token to the client
+  const { author_token: _redacted, ...safePhoto } = photo
+  return res.status(200).json({ photo: { ...safePhoto, url: publicUrl, is_mine: true } })
 }

@@ -10,8 +10,9 @@ const CopperRule = () => (
   <div style={{ width: 40, height: 1, background: 'var(--wcs-copper)', margin: '16px auto' }} />
 )
 
-export default function Gallery() {
-  const { eventId, type } = useParams()
+export default function Gallery({ defaultType }) {
+  const { eventId, type: routeType } = useParams()
+  const type = routeType || defaultType || 'post'
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') || localStorage.getItem('wcs_guest_token')
 
@@ -32,6 +33,10 @@ export default function Gallery() {
   const [captionInput, setCaptionInput] = useState('')
   const fileInputRef = useRef(null)
 
+  const [lightbox, setLightbox]         = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [deleting, setDeleting]         = useState(false)
+
   const phase = type === 'post' ? 'post' : 'pre'
   const phaseLabel = phase === 'pre' ? 'Pre-event' : 'Post-event'
 
@@ -40,7 +45,7 @@ export default function Gallery() {
       const res = await fetch('/api/get-gallery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, phase }),
+        body: JSON.stringify({ eventId, phase, token: token || undefined }),
       })
       if (!res.ok) { setNotFound(true); setLoading(false); return }
       const data = await res.json()
@@ -153,7 +158,7 @@ export default function Gallery() {
       if (!saveRes.ok) throw new Error(saveData.error || 'Could not save photo')
       setUploadProgress(100)
 
-      setPhotos(prev => [...prev, saveData.photo])
+      setPhotos(prev => [saveData.photo, ...prev])
       setCaptionInput('')
       if (fileInputRef.current) fileInputRef.current.value = ''
     } catch (err) {
@@ -161,6 +166,31 @@ export default function Gallery() {
     } finally {
       setUploading(false)
       setTimeout(() => setUploadProgress(0), 800)
+    }
+  }
+
+  async function handleDelete(photo) {
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/delete-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          photoId: photo.id,
+          token: isGuest ? token : undefined,
+          authorId: isHost ? hostUserId : undefined,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || 'Could not remove photograph')
+      }
+      setPhotos(prev => prev.filter(p => p.id !== photo.id))
+      setConfirmDelete(null)
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -289,41 +319,75 @@ export default function Gallery() {
               gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
               gap: 12,
             }}>
-              {photos.map(photo => (
-                <div key={photo.id} style={{ position: 'relative', background: 'var(--wcs-white)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--wcs-cream-dark)' }}>
-                  <img
-                    src={photo.url}
-                    alt={photo.caption || ''}
-                    loading="lazy"
-                    style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block' }}
-                  />
-                  {photo.featured && (
-                    <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--wcs-copper)', color: '#fff', fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 3, fontFamily: 'Inter, system-ui' }}>
-                      Featured
-                    </div>
-                  )}
-                  <div style={{ padding: '10px 12px' }}>
-                    {photo.caption && (
-                      <p style={{ fontSize: 12, color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', margin: '0 0 4px', lineHeight: 1.4 }}>
-                        {photo.caption}
-                      </p>
+              {photos.map(photo => {
+                const canDelete = isHost || photo.is_mine
+                return (
+                  <div key={photo.id} style={{ position: 'relative', background: 'var(--wcs-white)', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--wcs-cream-dark)' }}>
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || ''}
+                      loading="lazy"
+                      onClick={() => setLightbox(photo)}
+                      style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
+                    />
+                    {photo.featured && (
+                      <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--wcs-copper)', color: '#fff', fontSize: 9, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 3, fontFamily: 'Inter, system-ui' }}>
+                        Featured
+                      </div>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui' }}>
-                        {photo.author_name} · {formatTime(photo.uploaded_at)}
-                      </span>
-                      {isHost && (
-                        <button
-                          onClick={() => handleFeatureToggle(photo.id, photo.featured)}
-                          style={{ fontSize: 10, color: photo.featured ? 'var(--wcs-copper)' : 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', letterSpacing: '0.06em', padding: 0 }}
-                        >
-                          {photo.featured ? '★ Featured' : '☆ Feature'}
-                        </button>
+                    <div style={{ padding: '10px 12px' }}>
+                      {photo.caption && (
+                        <p style={{ fontSize: 12, color: 'var(--wcs-green-dark)', fontFamily: 'Inter, system-ui', margin: '0 0 4px', lineHeight: 1.4 }}>
+                          {photo.caption}
+                        </p>
                       )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: 10, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', minWidth: 0 }}>
+                          {photo.author_name} · {formatTime(photo.uploaded_at)}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                          {isHost && (
+                            <button
+                              onClick={() => handleFeatureToggle(photo.id, photo.featured)}
+                              style={{ fontSize: 10, color: photo.featured ? 'var(--wcs-copper)' : 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', letterSpacing: '0.06em', padding: 0 }}
+                            >
+                              {photo.featured ? '★ Featured' : '☆ Feature'}
+                            </button>
+                          )}
+                          {canDelete && (
+                            confirmDelete === photo.id ? (
+                              <span style={{ fontSize: 10, fontFamily: 'Inter, system-ui', color: '#b91c1c' }}>
+                                Remove?{' '}
+                                <button
+                                  onClick={() => handleDelete(photo)}
+                                  disabled={deleting}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', fontSize: 10, fontFamily: 'Inter, system-ui', padding: 0 }}
+                                >
+                                  Yes
+                                </button>
+                                {' · '}
+                                <button
+                                  onClick={() => setConfirmDelete(null)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--wcs-green-muted)', fontSize: 10, fontFamily: 'Inter, system-ui', padding: 0 }}
+                                >
+                                  No
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDelete(photo.id)}
+                                style={{ fontSize: 10, color: 'var(--wcs-green-muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', letterSpacing: '0.06em', padding: 0 }}
+                              >
+                                Remove
+                              </button>
+                            )
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -347,6 +411,36 @@ export default function Gallery() {
         </div>
 
       </div>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <img
+            src={lightbox.url}
+            alt={lightbox.caption || ''}
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 4 }}
+          />
+          {lightbox.caption && (
+            <p
+              onClick={e => e.stopPropagation()}
+              style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', fontSize: 12, color: 'rgba(255,255,255,0.75)', fontFamily: 'Inter, system-ui', textAlign: 'center', padding: '0 20px', maxWidth: 400, lineHeight: 1.5 }}
+            >
+              {lightbox.caption}
+            </p>
+          )}
+          <button
+            onClick={() => setLightbox(null)}
+            style={{ position: 'absolute', top: 16, right: 20, background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 28, cursor: 'pointer', lineHeight: 1, padding: 4 }}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }

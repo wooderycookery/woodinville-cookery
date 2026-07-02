@@ -141,7 +141,7 @@ export default async function handler(req, res) {
     const token = crypto.randomUUID()
     const { error: guestError } = await supabase
       .from('guests')
-      .insert({ contact_id: contact.id, event_id: event.id, invite_token: token })
+      .insert({ contact_id: contact.id, event_id: event.id, invite_token: token, rsvp_status: 'no_response' })
     if (guestError) { console.error('guest insert:', guestError); continue }
 
     guestList.push({ email, token, isNew: true })
@@ -154,7 +154,7 @@ export default async function handler(req, res) {
       const eventUrl = `${baseEventUrl}?token=${token}`
       return {
         from: 'Woodinville Cookery Society <events@woodinvillecookery.com>',
-        reply_to: `WCS — ${event.name} <events@woodinvillecookery.com>`,
+        reply_to: process.env.REPLY_TO_EMAIL,
         to: [email],
         subject: `Mark the date — ${event.name}`,
         html: renderHtml({

@@ -187,7 +187,7 @@ export default async function handler(req, res) {
       })
       await resend.emails.send({
         from: 'Woodinville Cookery Society <events@woodinvillecookery.com>',
-        reply_to: `WCS — ${event.name} <events@woodinvillecookery.com>`,
+        reply_to: process.env.REPLY_TO_EMAIL,
         to: [normalizedEmail],
         subject: rsvpStatus === 'attending'
           ? `We'll set a place for you — ${event.name}`

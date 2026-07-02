@@ -100,7 +100,7 @@ export default async function handler(req, res) {
       const eventUrl = g.invite_token ? `${baseEventUrl}?token=${g.invite_token}` : baseEventUrl
       return {
         from: 'Woodinville Cookery Society <events@woodinvillecookery.com>',
-        reply_to: `WCS — ${event.name} <events@woodinvillecookery.com>`,
+        reply_to: process.env.REPLY_TO_EMAIL,
         to: [g.contacts.email],
         subject: subject.trim(),
         html: renderHtml({ eventName: event.name, eventDate: formattedDate, note: note.trim(), eventUrl, appUrl }),

@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   if (!eventId || !phase || !filename) {
     return res.status(400).json({ error: 'Missing required fields' })
   }
-  if (!['pre', 'post'].includes(phase)) {
+  if (!['pre', 'post', 'table'].includes(phase)) {
     return res.status(400).json({ error: 'Invalid phase' })
   }
 

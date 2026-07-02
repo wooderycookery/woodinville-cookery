@@ -116,7 +116,7 @@ export default async function handler(req, res) {
         return resend.emails.send({
           from: 'Woodinville Cookery Society <events@woodinvillecookery.com>',
           to: g.contacts.email,
-          replyTo: `"${event.name}" <events@woodinvillecookery.com>`,
+          reply_to: process.env.REPLY_TO_EMAIL,
           subject,
           html: galleryEmailHtml({
             guestName: g.contacts.name || 'Friend',

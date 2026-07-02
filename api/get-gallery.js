@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { eventId, phase } = req.body
+  const { eventId, phase, token } = req.body
   if (!eventId || !phase) return res.status(400).json({ error: 'Missing required fields' })
 
   const { data: event, error: eventError } = await supabase
@@ -32,11 +32,11 @@ export default async function handler(req, res) {
 
   const { data: photos, error: photosError } = await supabase
     .from('photos')
-    .select('id, storage_path, phase, caption, featured, author_name, uploaded_at')
+    .select('id, storage_path, phase, caption, featured, author_name, author_token, uploaded_at')
     .eq('event_id', eventId)
     .eq('phase', phase)
     .order('featured', { ascending: false })
-    .order('uploaded_at', { ascending: true })
+    .order('uploaded_at', { ascending: false })
 
   if (photosError) return res.status(500).json({ error: photosError.message })
 
@@ -44,7 +44,8 @@ export default async function handler(req, res) {
     const { data: { publicUrl } } = supabase.storage
       .from('event-images')
       .getPublicUrl(p.storage_path)
-    return { ...p, url: publicUrl }
+    const { author_token: storedToken, ...safePhoto } = p
+    return { ...safePhoto, url: publicUrl, is_mine: token ? storedToken === token : false }
   })
 
   return res.status(200).json({

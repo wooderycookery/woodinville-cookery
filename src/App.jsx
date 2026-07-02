@@ -19,6 +19,7 @@ export default function App() {
         <Route path="/my-invitations" element={<GuestDashboard />} />
         <Route path="/ideas" element={<IdeasBoard />} />
         <Route path="/gallery/:eventId/:type" element={<Gallery />} />
+        <Route path="/event/:eventId/gallery" element={<Gallery defaultType="post" />} />
         <Route
           path="/history"
           element={

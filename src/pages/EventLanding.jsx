@@ -622,14 +622,8 @@ export default function EventLanding() {
         <div style={{ textAlign: 'center', marginTop: 16 }}>
           <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 4, fontFamily: 'Inter, system-ui' }}>
             {dateLabel}
-            {startTime && <span style={{ marginLeft: 10 }}>· {endTime ? `${startTime} – ${endTime}` : startTime}</span>}
+            {startTime && <span style={{ marginLeft: 10 }}>· {endTime ? `${startTime} – ${endTime}` : `${startTime} — ${endLine}`}</span>}
           </p>
-          {countdown && (
-            <p className="font-serif" style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--wcs-green-muted)', marginBottom: 2 }}>{countdown}</p>
-          )}
-          {startTime && !endTime && (
-            <p className="font-serif" style={{ fontSize: 13, fontStyle: 'italic', color: 'var(--wcs-green-muted)', marginBottom: 2 }}>{endLine}</p>
-          )}
           {hostNames && (
             <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginTop: 10, marginBottom: 6 }}>Hosted by {hostNames}</p>
           )}

@@ -138,16 +138,12 @@ export default function ForTheTable({ eventId, isHost, hostUserId, guestToken, g
 
       {/* Guest submissions */}
       <div style={{ marginBottom: canSubmit ? 24 : 0 }}>
-        {(hostItems.length > 0 || guestItems.length > 0) && (
-          <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginBottom: 10 }}>
-            From the guests
-          </p>
-        )}
-        {guestItems.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', fontStyle: 'italic', margin: 0 }}>
-            Be the first to add something.
-          </p>
-        ) : (
+        {guestItems.length > 0 && (
+          <>
+            <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginBottom: 10 }}>
+              From the guests
+            </p>
+            <div>
           <div>
             {guestItems.map((c, i) => {
               const isOwn = !isHost && c.rsvp_id === guestRsvpId
@@ -185,12 +181,13 @@ export default function ForTheTable({ eventId, isHost, hostUserId, guestToken, g
                 </div>
               )
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
 
-      {/* Submission form */}
-      {canSubmit && !isHost && (
+      {/* Submission form — always visible for guests with token; empty state for those without */}
+      {!isHost && (canSubmit ? (
         <form onSubmit={handleSubmit} style={{ marginTop: 4 }}>
           <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', marginBottom: 10 }}>
             What are you bringing?
@@ -285,7 +282,11 @@ export default function ForTheTable({ eventId, isHost, hostUserId, guestToken, g
             {submitting ? '…' : 'Bring this'}
           </button>
         </form>
-      )}
+      ) : (
+        <p style={{ fontSize: 13, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', fontStyle: 'italic', margin: 0 }}>
+          Be the first to add something.
+        </p>
+      ))}
     </div>
   )
 }

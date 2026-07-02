@@ -212,9 +212,11 @@ export default function ForTheTable({ eventId, isHost, hostUserId, guestToken, g
             <button
               type="button"
               onClick={() => { setAiOpen(o => !o); setAiSuggestions([]); setAiError('') }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: 'var(--wcs-green-muted)', fontFamily: 'Inter, system-ui', display: 'flex', alignItems: 'center', gap: 5 }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#8B5A3A' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--wcs-copper)' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: 'var(--wcs-copper)', fontFamily: 'Inter, system-ui', display: 'flex', alignItems: 'center', gap: 5, fontStyle: 'italic' }}
             >
-              <span style={{ fontSize: 14 }}>✦</span> Need help deciding?
+              <span style={{ fontSize: 14, fontStyle: 'normal' }}>✦</span> Need help deciding?
             </button>
 
             {aiOpen && (

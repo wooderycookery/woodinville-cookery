@@ -1390,7 +1390,6 @@ function ConfirmationBlock({ rsvpStatus, onUpdate, icsUrl, hasEmail = true }) {
   const copy = CONFIRMATION[rsvpStatus] || CONFIRMATION.attending
   return (
     <div className="text-center">
-      <CopperRule />
       <p className="font-serif" style={{ fontSize: 20, color: 'var(--wcs-green-dark)', marginBottom: 8 }}>{copy.heading()}</p>
       {hasEmail && <p style={{ fontSize: 13, color: 'var(--wcs-green-light)', marginBottom: 16 }}>{copy.sub}</p>}
       {icsUrl && (

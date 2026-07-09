@@ -26,13 +26,13 @@ export default function FromTheTable({ eventId, isHost, hostUserId, guestToken, 
         .select('id, body, author_name, author_role, is_pinned, created_at')
         .eq('event_id', eventId)
         .eq('channel', 'attendees')
-        .order('created_at', { ascending: true }),
+        .order('created_at', { ascending: false }),
       supabase
         .from('photos')
         .select('id, storage_path, caption, author_name, uploaded_at')
         .eq('event_id', eventId)
         .eq('phase', 'table')
-        .order('uploaded_at', { ascending: true }),
+        .order('uploaded_at', { ascending: false }),
     ])
 
     const msgItems = (msgs || []).map(m => ({ ...m, kind: 'message', sortKey: m.created_at }))
@@ -40,7 +40,7 @@ export default function FromTheTable({ eventId, isHost, hostUserId, guestToken, 
       const { data: { publicUrl } } = supabase.storage.from('event-images').getPublicUrl(p.storage_path)
       return { ...p, kind: 'photo', sortKey: p.uploaded_at, url: publicUrl }
     })
-    const merged = [...msgItems, ...photoItems].sort((a, b) => new Date(a.sortKey) - new Date(b.sortKey))
+    const merged = [...msgItems, ...photoItems].sort((a, b) => new Date(b.sortKey) - new Date(a.sortKey))
     setItems(merged)
   }, [eventId])
 

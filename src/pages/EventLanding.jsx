@@ -191,6 +191,7 @@ export default function EventLanding() {
   const activeToken = token || walkInToken
 
   const [attendingCount, setAttendingCount] = useState(0)
+  const [hopefulCount, setHopefulCount] = useState(0)
   const [attendingNames, setAttendingNames] = useState(null)
 
   const fetchGuestList = useCallback(async (tokenToUse) => {
@@ -201,6 +202,7 @@ export default function EventLanding() {
       if (!res.ok) return
       const data = await res.json()
       setAttendingCount(data.attendingCount || 0)
+      setHopefulCount(data.hopefulCount || 0)
       setAttendingNames(data.names || null)
     } catch {}
   }, [eventId])
@@ -723,6 +725,9 @@ export default function EventLanding() {
               <>
                 <p style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--wcs-copper)', marginBottom: 10, fontFamily: 'Inter, system-ui' }}>
                   Those joining the table
+                </p>
+                <p style={{ fontSize: 14, color: 'var(--wcs-green-mid)', lineHeight: 2, fontFamily: 'Inter, system-ui', margin: 0 }}>
+                  {attendingCount} joining, {hopefulCount} hopeful
                 </p>
                 <p style={{ fontSize: 14, color: 'var(--wcs-green-mid)', lineHeight: 2, fontFamily: 'Inter, system-ui', margin: 0 }}>
                   {attendingNames.join(' · ')}

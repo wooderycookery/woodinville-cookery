@@ -19,13 +19,17 @@ export default async function handler(req, res) {
 
   if (eventError || !event) return res.status(404).json({ error: 'Event not found' })
 
-  const { data: attendingGuests } = await supabase
+  const { data: rsvpGuests } = await supabase
     .from('guests')
-    .select('id, guest_count, contacts(name)')
+    .select('id, guest_count, rsvp_status, contacts(name)')
     .eq('event_id', eventId)
-    .eq('rsvp_status', 'attending')
+    .in('rsvp_status', ['attending', 'maybe'])
 
-  const attendingCount = (attendingGuests || []).reduce((sum, g) => sum + (g.guest_count || 1), 0)
+  const attendingGuests = (rsvpGuests || []).filter(g => g.rsvp_status === 'attending')
+  const hopefulGuests = (rsvpGuests || []).filter(g => g.rsvp_status === 'maybe')
+
+  const attendingCount = attendingGuests.reduce((sum, g) => sum + (g.guest_count || 1), 0)
+  const hopefulCount = hopefulGuests.reduce((sum, g) => sum + (g.guest_count || 1), 0)
 
   const revealDate = event.guest_list_reveal_date
   const revealReached = revealDate && new Date() >= new Date(revealDate + 'T00:00:00')
@@ -47,5 +51,5 @@ export default async function handler(req, res) {
   }
 
   res.setHeader('Cache-Control', 'no-store')
-  return res.status(200).json({ attendingCount, names })
+  return res.status(200).json({ attendingCount, hopefulCount, names })
 }

@@ -243,7 +243,7 @@ function MessageItem({ item: m }) {
 function PhotoItem({ item: p }) {
   return (
     <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--wcs-cream-dark)' }}>
-      <img src={p.url} alt={p.caption || ''} style={{ width: '100%', maxHeight: 320, objectFit: 'cover', borderRadius: 8, display: 'block', marginBottom: 8 }} />
+      <img src={p.url} alt={p.caption || ''} style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 8, display: 'block', marginBottom: 8 }} />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div>
           {p.caption && (
